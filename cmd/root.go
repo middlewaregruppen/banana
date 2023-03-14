@@ -7,9 +7,11 @@ import (
 	"github.com/amimof/kmaint/cmd/version"
 
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 func NewDefaultCommand() *cobra.Command {
+	fs := filesys.MakeFsOnDisk()
 	stdOut := os.Stdout
 	c := &cobra.Command{
 		Use:   "kmaint",
@@ -22,6 +24,6 @@ func NewDefaultCommand() *cobra.Command {
 	}
 
 	c.AddCommand(version.NewCmdVersion(stdOut))
-	c.AddCommand(create.NewCmdCreate())
+	c.AddCommand(create.NewCmdCreate(fs))
 	return c
 }
