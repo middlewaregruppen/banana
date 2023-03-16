@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 
+	"github.com/amimof/kmaint/cmd/build"
 	"github.com/amimof/kmaint/cmd/create"
 	"github.com/amimof/kmaint/cmd/version"
 
@@ -25,5 +26,6 @@ func NewDefaultCommand() *cobra.Command {
 
 	c.AddCommand(version.NewCmdVersion(stdOut))
 	c.AddCommand(create.NewCmdCreate(fs))
+	c.AddCommand(build.NewCmdBuild(fs))
 	return c
 }

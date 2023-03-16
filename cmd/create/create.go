@@ -36,14 +36,10 @@ func NewCmdCreate(fs filesys.FileSystem) *cobra.Command {
 			km.Kind = "Konf"
 			km.APIVersion = "konf.io/v1alpha1"
 			km.Name = ""
-			km.Environments = []types.Environment{
+			km.Modules = []types.Module{
 				{
-					Modules: []types.Module{
-						{
-							Name: "ingress/traefik",
-							Opts: types.ModuleOpts{},
-						},
-					},
+					Name: "ingress/traefik",
+					Opts: types.ModuleOpts{},
 				},
 			}
 			err = kf.Write(km, fileName)
