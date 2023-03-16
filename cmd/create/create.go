@@ -3,6 +3,8 @@ package create
 import (
 	"fmt"
 
+	"github.com/amimof/kmaint/api/types"
+	"github.com/amimof/kmaint/pkg/kmaintfile"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
@@ -19,13 +21,35 @@ func NewCmdCreate(fs filesys.FileSystem) *cobra.Command {
 		Long:    "",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if fs.Exists(fileName) {
-				return fmt.Errorf("kustomization file already exists")
+				return fmt.Errorf("kmaint file already exists")
 			}
 			f, err := fs.Create(fileName)
 			if err != nil {
 				return err
 			}
 			f.Close()
+			kf := kmaintfile.NewKmaintFile(fs)
+			km, err := kf.Read(fileName)
+			if err != nil {
+				return err
+			}
+			km.Kind = "Konf"
+			km.APIVersion = "konf.io/v1alpha1"
+			km.Name = ""
+			km.Environments = []types.Environment{
+				{
+					Modules: []types.Module{
+						{
+							Name: "ingress/traefik",
+							Opts: types.ModuleOpts{},
+						},
+					},
+				},
+			}
+			err = kf.Write(km, fileName)
+			if err != nil {
+				return nil
+			}
 			return nil
 		},
 	}
@@ -33,7 +57,7 @@ func NewCmdCreate(fs filesys.FileSystem) *cobra.Command {
 		&fileName,
 		"filename",
 		"f",
-		"config.yaml",
+		"kmaint.yaml",
 		"The files that contain the configurations to apply.")
 	return c
 }

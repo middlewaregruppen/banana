@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/spf13/cobra v1.6.1
+	gopkg.in/yaml.v3 v3.0.1
 	sigs.k8s.io/kustomize/kyaml v0.14.1
 )
 
