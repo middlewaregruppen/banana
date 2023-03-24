@@ -2,19 +2,24 @@ package build
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/amimof/kmaint/pkg/kmaintfile"
 	"github.com/spf13/cobra"
 
 	//"sigs.k8s.io/kustomize/api/krusty"
+	"text/template"
+
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 var (
-	fileName             string
-	defaultKustomization = `apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization`
+	templateSuffix = ".tmpl"
+	fileName       string
 )
 
 func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
@@ -32,18 +37,86 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// Range over each module. A module is a structure of Go template files.
+			// Following code will clone the folder structure of each module, generate
+			// files in the structure using template definition.
 			for _, m := range km.Modules {
-				modulePath := fmt.Sprintf(fmt.Sprintf("%s/%s", "src", m.Name))
-				err = fs.MkdirAll(modulePath)
+
+				// Create the folder structure
+				modulePath := fmt.Sprintf("%s/%s", "modules", m.Name)
+				srcPath := fmt.Sprintf("%s/%s", "src", m.Name)
+				err = os.MkdirAll(srcPath, os.ModePerm)
 				if err != nil {
 					return err
 				}
-				err = fs.WriteFile(path.Join(modulePath, "kustomization.yaml"), []byte(defaultKustomization))
-				if err != nil {
-					return err
-				}
+
+				// Walk the folder structure and attempt to find template files
+				err = filepath.Walk(modulePath, func(rel string, info os.FileInfo, err error) error {
+
+					// Replace leading path "modules/" with "src/" and create folder structure within it
+					dirs := strings.Split(rel, string(os.PathSeparator))
+					dirs[0] = "src"
+					err = os.MkdirAll(path.Join(dirs...), os.ModePerm)
+					if err != nil {
+						return err
+					}
+
+					// Build the path to destination file which we will write the tempalte file to
+					dstName := path.Join(dirs...)
+					if strings.HasSuffix(info.Name(), templateSuffix) {
+						dstName = path.Join(dstName, info.Name()[:len(info.Name())-len(templateSuffix)])
+					} else {
+						dstName = path.Join(dstName, info.Name())
+					}
+
+					// Stat file and check if it's a regular file
+					srcStat, err := os.Stat(rel)
+					if err != nil {
+						return err
+					}
+					if !srcStat.Mode().IsRegular() {
+						return err
+					}
+
+					// Open file for reading
+					srcFile, err := os.Open(rel)
+					if err != nil {
+						return err
+					}
+					defer srcFile.Close()
+
+					// Create destination file which we will be writing to
+					dstFile, err := os.Create(dstName)
+					if err != nil {
+						return err
+					}
+					defer dstFile.Close()
+
+					// We only care about files ending in .tmpl when templating
+					if !strings.HasSuffix(rel, templateSuffix) {
+						_, err = io.Copy(dstFile, srcFile)
+						if err != nil {
+							return err
+						}
+					}
+
+					// Parse template injecting variables into it
+					tmpl, err := template.ParseFiles(rel)
+					if err != nil {
+						return err
+					}
+
+					// Write output to file
+					err = tmpl.Execute(dstFile, km)
+					if err != nil {
+						return err
+					}
+					return nil
+				})
+
 			}
-			return nil
+			return err
 		},
 	}
 	c.Flags().StringVarP(

@@ -9,6 +9,7 @@ PKGS     = $(or $(PKG),$(shell env GO111MODULE=on $(GO) list ./...))
 TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 			'{{ if or .TestGoFiles .XTestGoFiles }}{{ .ImportPath }}{{ end }}' \
 			$(PKGS))
+BUILDPATH ?= $(BIN)/$(shell basename $(MODULE))
 SRC_FILES=find . -name "*.go" -type f -not -path "./vendor/*" -not -path "./.git/*" -not -path "./.cache/*" -print0 | xargs -0 
 BIN      = $(CURDIR)/bin
 TBIN		 = $(CURDIR)/test/bin
@@ -24,14 +25,11 @@ export CGO_ENABLED=0
 
 # Build
 .PHONY: all
-all: |kmaint ## Build app program binaries
-
-.PHONY: kmaint
-kmaint: | $(BIN) ; $(info $(M) building executable to $(BIN)/kmaint) @ ## Build kmaint binary
+all: | $(BIN) ; $(info $(M) building executable to $(BUILDPATH)) @ ## Build program binary
 	$Q $(GO) build \
 		-tags release \
 		-ldflags '-X main.VERSION=${VERSION} -X main.COMMIT=${COMMIT} -X main.BRANCH=${BRANCH} -X main.GOVERSION=${GOVERSION}' \
-		-o $(BIN)/kmaint cmd/main.go
+		-o $(BUILDPATH) main.go
 
 # Tools
 $(BIN):

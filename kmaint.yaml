@@ -1,0 +1,6 @@
+kind: Konf
+apiVersion: konf.io/v1alpha1
+name: integration-services
+modules:
+    - name: monitoring/grafana
+    - name: ingress/traefik
