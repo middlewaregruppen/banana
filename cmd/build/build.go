@@ -54,20 +54,24 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 				// Walk the folder structure and attempt to find template files
 				err = filepath.Walk(modulePath, func(rel string, info os.FileInfo, err error) error {
 
+					// Ignore directories
+					if info.IsDir() {
+						return err
+					}
+
 					// Replace leading path "modules/" with "src/" and create folder structure within it
 					dirs := strings.Split(rel, string(os.PathSeparator))
 					dirs[0] = "src"
-					err = os.MkdirAll(path.Join(dirs...), os.ModePerm)
+					dstName := path.Join(dirs...)
+					dstDir := filepath.Dir(dstName)
+					err = os.MkdirAll(dstDir, os.ModePerm)
 					if err != nil {
 						return err
 					}
 
-					// Build the path to destination file which we will write the tempalte file to
-					dstName := path.Join(dirs...)
-					if strings.HasSuffix(info.Name(), templateSuffix) {
-						dstName = path.Join(dstName, info.Name()[:len(info.Name())-len(templateSuffix)])
-					} else {
-						dstName = path.Join(dstName, info.Name())
+					// Remove template suffix from file name
+					if strings.HasSuffix(dstName, templateSuffix) {
+						dstName = path.Join(dstDir, info.Name()[:len(info.Name())-len(templateSuffix)])
 					}
 
 					// Stat file and check if it's a regular file
@@ -108,7 +112,7 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 					}
 
 					// Write output to file
-					err = tmpl.Execute(dstFile, km)
+					err = tmpl.Execute(dstFile, m.Opts)
 					if err != nil {
 						return err
 					}

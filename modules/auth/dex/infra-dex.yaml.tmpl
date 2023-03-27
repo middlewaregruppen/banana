@@ -1,0 +1,156 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: infra-dex
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: infra-dex
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+rules:
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: infra-dex-cluster
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+roleRef:
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+  name: infra-dex
+subjects:
+- kind: ServiceAccount
+  namespace: default
+  name: infra-dex
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: infra-dex
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+rules:
+  - apiGroups: ["dex.coreos.com"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: infra-dex
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: infra-dex  
+subjects:
+- kind: ServiceAccount
+  namespace: default
+  name: infra-dex
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: infra-dex
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 5556
+      targetPort: http
+      protocol: TCP
+      appProtocol: http
+    - name: telemetry
+      port: 5558
+      targetPort: telemetry
+      protocol: TCP
+      appProtocol: http
+  selector:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infra-dex
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/instance: infra-dex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dex
+      app.kubernetes.io/instance: infra-dex
+  template:
+    metadata:
+      annotations:
+        checksum/config: 969c3d82c9aeb20d3d1d746ac1c4dff43aa9d185368b2a609fabf9586e6cb5fd
+      labels:
+        app.kubernetes.io/name: dex
+        app.kubernetes.io/instance: infra-dex
+    spec:
+      serviceAccountName: infra-dex
+      securityContext:
+        {}
+      containers:
+        - name: dex
+          securityContext:
+            {}
+          image: "ghcr.io/dexidp/dex:{{.version}}"
+          imagePullPolicy: Always
+          args:
+            - dex
+            - serve
+            - --web-http-addr
+            - 0.0.0.0:5556
+            - --telemetry-addr
+            - 0.0.0.0:5558
+            - /etc/dex/config.yaml
+          ports:
+            - name: http
+              containerPort: 5556
+              protocol: TCP
+            - name: telemetry
+              containerPort: 5558
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: telemetry
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: telemetry
+          resources:
+            {}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/dex
+              readOnly: true
+            - name: db
+              mountPath: /var/lib/dex
+      volumes:
+        - name: config
+          secret:
+            secretName: infra-dex
+        - name: db
+          emptyDir: {}

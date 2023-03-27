@@ -22,4 +22,4 @@ type Module struct {
 	Opts ModuleOpts `json:"opts,omitempty" yaml:"opts,omitempty"`
 }
 
-type ModuleOpts struct{}
+type ModuleOpts interface{}

@@ -95,3 +95,4 @@ clean: ; $(info $(M) cleaning)	@ ## Cleanup everything
 	@rm -rfv $(BIN)
 	@rm -rfv $(TBIN)
 	@rm -rfv $(CURDIR)/test
+	@rm -rfv $(CURDIR)/src
