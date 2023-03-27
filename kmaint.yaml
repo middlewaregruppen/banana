@@ -1,0 +1,15 @@
+kind: Konf
+apiVersion: konf.io/v1alpha1
+name: integration
+modules:
+- name: monitoring/grafana
+  opts:
+    version: 1.4.4
+    namespace: infra-monitoring
+- name: ingress/traefik
+  opts:
+    version: 2.2.2
+- name: auth/dex
+  opts:
+    version: 4.1.1
+    namespace: kube-system

@@ -7,15 +7,7 @@ type KmaintFile struct {
 	// Name is the name of this konfig
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
-	// Environments is a list of environments
-	Environments []Environment `json:"environments,omitempty" yaml:"environments,omitempty"`
-}
-
-type Environment struct {
-	// Name is the name of this environment
-	Name string `json:"name,omitempty" yaml:"name,omitempty"`
-
-	// Modules is a list of modules applied to this environment
+	// Modules is a list of modules applied to this konfig
 	Modules []Module `json:"modules,omitempty" yaml:"modules,omitempty"`
 }
 
@@ -30,4 +22,4 @@ type Module struct {
 	Opts ModuleOpts `json:"opts,omitempty" yaml:"opts,omitempty"`
 }
 
-type ModuleOpts struct{}
+type ModuleOpts interface{}
