@@ -18,30 +18,31 @@ var (
 )
 
 type Module interface {
-	Build()
+	Build() error
 }
 
-func Load(m types.Module) (Module, error) {
-	if u, err := url.ParseRequestURI(m.Name); err == nil {
-		fmt.Println("Module is remote")
-		return LoadRemote(m, u)
-	}
-	// If all above fail then it must be a builtin module
-	return LoadBuiltin(m, m.Name)
+type builtinModule struct {
+	opts types.ModuleOpts
 }
 
-func LoadBuiltin(m types.Module, p string) (Module, error) {
+type remoteModule struct {
+	opts types.ModuleOpts
+}
+
+func (m builtinModule) Build() error {
 	// Create the folder structure
-	modulePath := fmt.Sprintf("%s/%s", "modules", m.Name)
-	srcPath := fmt.Sprintf("%s/%s", "src", m.Name)
-	err := os.MkdirAll(srcPath, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
+	modulePath := fmt.Sprintf("%s/%s", "modules", m.opts.ModuleName())
+	srcPath := fmt.Sprintf("%s/%s", "src", m.opts.ModuleName())
 
 	// First we check if module exists
 	if _, err := os.Stat(modulePath); os.IsNotExist(err) {
-		return nil, err
+		return err
+	}
+
+	// Create folder structure
+	err := os.MkdirAll(srcPath, os.ModePerm)
+	if err != nil {
+		return err
 	}
 
 	// Walk the folder structure and attempt to find template files
@@ -105,15 +106,41 @@ func LoadBuiltin(m types.Module, p string) (Module, error) {
 		}
 
 		// Write output to file
-		err = tmpl.Execute(dstFile, m.Opts)
+		err = tmpl.Execute(dstFile, m.opts)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
-	return nil, err
+	return err
 }
 
-func LoadRemote(m types.Module, u *url.URL) (Module, error) {
-	return nil, nil
+func (m remoteModule) Build() error {
+	return nil
+}
+
+func LoadBuiltin(opts types.ModuleOpts) Module {
+	return &builtinModule{opts: opts}
+}
+
+func LoadRemote(opts types.ModuleOpts, u *url.URL) Module {
+	return &remoteModule{opts: opts}
+}
+
+func Load(m types.ModuleOpts) Module {
+	if u, err := url.ParseRequestURI(m.ModuleName()); err == nil {
+		return LoadRemote(m, u)
+	}
+	// If all above fail then it must be a builtin module
+	return LoadBuiltin(m)
+}
+
+func WithParentOpts(km *types.KmaintFile, m types.Module) types.ModuleOpts {
+	newModule := m
+	newModule.Opts["Name"] = km.Name
+	newModule.Opts["Version"] = km.Version
+	newModule.Opts["Metadata"] = km.MetaData
+	newModule.Opts["Clusters"] = km.Clusters
+	newModule.Opts["Module"] = m
+	return newModule.Opts
 }

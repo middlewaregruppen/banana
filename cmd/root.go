@@ -25,7 +25,6 @@ func NewDefaultCommand() *cobra.Command {
 		Long: `The multi-purpose command line tool for maintaining application state.
 	kmaint is a simple CLI tool to:
 	- Describe application configuration that emerges into Kustomize projects
-	download and manage the Kubernetes Fury Distribution (KFD) modules
 	`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			logrus.SetOutput(os.Stdout)

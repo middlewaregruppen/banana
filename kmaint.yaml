@@ -1,23 +1,25 @@
 kind: Konf
 apiVersion: konf.io/v1alpha1
 name: integration
+version: 1.0.0
+clusters:
+- name: hubble-experiments
+  version: 2.4.5
+  ingress: 
+    urlFormat: "$1-$2.k8s.amimof.com"
 modules:
 - name: monitoring/grafana
+  version: 1.4.4
   opts:
-    version: 1.4.4
     namespace: infra-monitoring
 - name: ingress/traefik
   opts:
     version: 2.2.2
 - name: auth/dex
-  opts:
-    version: 4.1.1
-    namespace: kube-system
-- name: monitoring/prometheus
-  opts:
-    version: 2.11
-    namespace: prometheus
-- name: authentication/dex
-  opts:
-    version: 1.77.1
-    namespace: dex
+  version: 4.1.1
+  namespace: kube-system
+  opts: {}
+# - name: monitoring/prometheus
+#   opts:
+#     version: 2.11
+#     namespace: prometheus

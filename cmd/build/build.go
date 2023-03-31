@@ -38,8 +38,8 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
 				logrus.Infof("Building module %s\n", m.Name)
-				_, err := module.Load(m)
-				if err != nil {
+				mod := module.Load(module.WithParentOpts(km, m))
+				if err = mod.Build(); err != nil {
 					return err
 				}
 
