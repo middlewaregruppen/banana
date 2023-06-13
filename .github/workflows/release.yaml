@@ -25,12 +25,12 @@ jobs:
 
     - name: Build Binaries
       run: |
-        GOOS=linux GOARCH=amd64 BUILDPATH=./bin/kmaint-linux-amd64 make
-        GOOS=linux GOARCH=arm BUILDPATH=./bin/kmaint-linux-arm make
-        GOOS=linux GOARCH=arm64 BUILDPATH=./bin/kmaint-linux-arm64 make
-        GOOS=windows GOARCH=amd64 BUILDPATH=./bin/kmaint-windows-amd64.exe make
-        GOOS=darwin GOARCH=amd64 BUILDPATH=./bin/kmaint-darwin-amd64 make
-        GOOS=darwin GOARCH=arm64 BUILDPATH=./bin/kmaint-darwin-arm64 make
+        GOOS=linux GOARCH=amd64 BUILDPATH=./bin/banana-linux-amd64 make
+        GOOS=linux GOARCH=arm BUILDPATH=./bin/banana-linux-arm make
+        GOOS=linux GOARCH=arm64 BUILDPATH=./bin/banana-linux-arm64 make
+        GOOS=windows GOARCH=amd64 BUILDPATH=./bin/banana-windows-amd64.exe make
+        GOOS=darwin GOARCH=amd64 BUILDPATH=./bin/banana-darwin-amd64 make
+        GOOS=darwin GOARCH=arm64 BUILDPATH=./bin/banana-darwin-arm64 make
 
     - name: Create Release
       uses: ncipollo/release-action@v1

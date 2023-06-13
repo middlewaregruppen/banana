@@ -23,10 +23,10 @@ var (
 func NewCmdVersion(w io.Writer) *cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:     "version",
-		Short:   "Prints the kmaint version",
-		Example: `kmaint version`,
+		Short:   "Prints the banana version",
+		Example: `banana version`,
 		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Printf("kmaint version %v\n", VERSION)
+			fmt.Printf("banana version %v\n", VERSION)
 			fmt.Printf("built %v from commit %v branch %s", DATE, COMMIT, BRANCH)
 		},
 	}

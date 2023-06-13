@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/amimof/kmaint/cmd"
+	"github.com/middlewaregruppen/banana/cmd"
 	"github.com/sirupsen/logrus"
 )
 

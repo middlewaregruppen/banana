@@ -1,6 +1,6 @@
 package types
 
-type KmaintFile struct {
+type BananaFile struct {
 	TypeMeta `json:",inline" yaml:",inline"`
 	MetaData *ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 

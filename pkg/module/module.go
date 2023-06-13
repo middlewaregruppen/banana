@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/amimof/kmaint/api/types"
+	"github.com/middlewaregruppen/banana/api/types"
 )
 
 var (
@@ -135,7 +135,7 @@ func Load(m types.ModuleOpts) Module {
 	return LoadBuiltin(m)
 }
 
-func WithParentOpts(km *types.KmaintFile, m types.Module) types.ModuleOpts {
+func WithParentOpts(km *types.BananaFile, m types.Module) types.ModuleOpts {
 	newModule := m
 	newModule.Opts["Name"] = km.Name
 	newModule.Opts["Version"] = km.Version
