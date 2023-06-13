@@ -8,16 +8,7 @@ clusters:
   ingress: 
     urlFormat: "$1-$2.k8s.mdlwr.com"
 modules:
-- name: monitoring/grafana
-  version: 1.4.4
-  opts:
-    namespace: infra-monitoring
-- name: ingress/traefik
-  opts:
-    version: 2.2.2
-- name: auth/dex
-  version: 4.1.1
-  namespace: kube-system
+- name: ingress/nginx
   opts: {}
 # - name: monitoring/prometheus
 #   opts:

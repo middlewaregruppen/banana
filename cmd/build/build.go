@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/middlewaregruppen/banana/pkg/bananafile"
 	"github.com/middlewaregruppen/banana/pkg/module"
@@ -17,7 +18,7 @@ var (
 	fileName string
 )
 
-func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
+func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 	c := &cobra.Command{
 		Use: "build",
 		//Aliases: []string{""},
@@ -39,7 +40,7 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 			for _, m := range km.Modules {
 				logrus.Infof("Building module %s\n", m.Name)
 				mod := module.Load(module.WithParentOpts(km, m))
-				if err = mod.Build(); err != nil {
+				if err = mod.Build(w); err != nil {
 					return err
 				}
 

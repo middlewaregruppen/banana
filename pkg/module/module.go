@@ -2,13 +2,12 @@ package module
 
 import (
 	"fmt"
-	"html/template"
 	"io"
-	"net/url"
 	"os"
-	"path"
-	"path/filepath"
-	"strings"
+
+	"sigs.k8s.io/kustomize/api/krusty"
+	ktypes "sigs.k8s.io/kustomize/api/types"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"github.com/middlewaregruppen/banana/api/types"
 )
@@ -18,18 +17,14 @@ var (
 )
 
 type Module interface {
-	Build() error
+	Build(io.Writer) error
 }
 
-type builtinModule struct {
+type kustomizeModule struct {
 	opts types.ModuleOpts
 }
 
-type remoteModule struct {
-	opts types.ModuleOpts
-}
-
-func (m builtinModule) Build() error {
+func (m kustomizeModule) Build(w io.Writer) error {
 	// Create the folder structure
 	modulePath := fmt.Sprintf("%s/%s", "modules", m.opts.ModuleName())
 	srcPath := fmt.Sprintf("%s/%s", "src", m.opts.ModuleName())
@@ -45,94 +40,43 @@ func (m builtinModule) Build() error {
 		return err
 	}
 
-	// Walk the folder structure and attempt to find template files
-	err = filepath.Walk(modulePath, func(rel string, info os.FileInfo, err error) error {
+	fsys := filesys.MakeFsOnDisk()
 
-		// Ignore directories
-		if info.IsDir() {
-			return err
-		}
-
-		// Replace leading path "modules/" with "src/" and create folder structure within it
-		dirs := strings.Split(rel, string(os.PathSeparator))
-		dirs[0] = "src"
-		dstName := path.Join(dirs...)
-		dstDir := filepath.Dir(dstName)
-		err = os.MkdirAll(dstDir, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
-		// Remove template suffix from file name
-		if strings.HasSuffix(dstName, TemplateSuffix) {
-			dstName = path.Join(dstDir, info.Name()[:len(info.Name())-len(TemplateSuffix)])
-		}
-
-		// Stat file and check if it's a regular file
-		srcStat, err := os.Stat(rel)
-		if err != nil {
-			return err
-		}
-		if !srcStat.Mode().IsRegular() {
-			return err
-		}
-
-		// Open file for reading
-		srcFile, err := os.Open(rel)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
-
-		// Create destination file which we will be writing to
-		dstFile, err := os.Create(dstName)
-		if err != nil {
-			return err
-		}
-		defer dstFile.Close()
-
-		// We only care about files ending in .tmpl when templating
-		if !strings.HasSuffix(rel, TemplateSuffix) {
-			_, err = io.Copy(dstFile, srcFile)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Parse template injecting variables into it
-		tmpl, err := template.ParseFiles(rel)
-		if err != nil {
-			return err
-		}
-
-		// Write output to file
-		err = tmpl.Execute(dstFile, m.opts)
-		if err != nil {
-			return err
-		}
-		return nil
+	// Build kustomization with krusty api
+	k := krusty.MakeKustomizer(&krusty.Options{
+		Reorder:           krusty.ReorderOptionNone,
+		AddManagedbyLabel: false,
+		LoadRestrictions:  ktypes.LoadRestrictionsRootOnly,
+		PluginConfig:      ktypes.DisabledPluginConfig(),
 	})
+
+	// Run kustomization
+	res, err := k.Run(fsys, modulePath)
+	if err != nil {
+		return err
+	}
+
+	// As Yaml output
+	yml, err := res.AsYaml()
+	if err != nil {
+		return err
+	}
+
+	// Write to writer
+	_, err = w.Write(yml)
+	if err != nil {
+		return err
+	}
 	return err
 }
 
-func (m remoteModule) Build() error {
-	return nil
-}
-
-func LoadBuiltin(opts types.ModuleOpts) Module {
-	return &builtinModule{opts: opts}
-}
-
-func LoadRemote(opts types.ModuleOpts, u *url.URL) Module {
-	return &remoteModule{opts: opts}
+func LoadKustomizeModule(opts types.ModuleOpts) Module {
+	return &kustomizeModule{opts: opts}
 }
 
 func Load(m types.ModuleOpts) Module {
-	if u, err := url.ParseRequestURI(m.ModuleName()); err == nil {
-		return LoadRemote(m, u)
-	}
-	// If all above fail then it must be a builtin module
-	return LoadBuiltin(m)
+	// Determine module implementation here. Right now we only support kustomize modules
+	return LoadKustomizeModule(m)
 }
 
 func WithParentOpts(km *types.BananaFile, m types.Module) types.ModuleOpts {
