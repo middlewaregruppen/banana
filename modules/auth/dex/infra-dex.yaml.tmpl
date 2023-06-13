@@ -7,10 +7,10 @@ metadata:
   labels:
     app.kubernetes.io/name: dex
     app.kubernetes.io/instance: infra-dex
-    kmaint.io/name: {{ .Name }}
-    kmaint.io/version: {{ .Version }}
-    kmaint.io/moduleName: {{ .Module.Name }}
-    kmaint.io/moduleVersion: {{ .Module.Version }}
+    banana.io/name: {{ .Name }}
+    banana.io/version: {{ .Version }}
+    banana.io/moduleName: {{ .Module.Name }}
+    banana.io/moduleVersion: {{ .Module.Version }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

@@ -1,4 +1,4 @@
-module github.com/amimof/kmaint
+module github.com/middlewaregruppen/banana
 
 go 1.19
 

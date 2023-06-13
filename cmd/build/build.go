@@ -3,8 +3,8 @@ package build
 import (
 	"fmt"
 
-	"github.com/amimof/kmaint/pkg/kmaintfile"
-	"github.com/amimof/kmaint/pkg/module"
+	"github.com/middlewaregruppen/banana/pkg/bananafile"
+	"github.com/middlewaregruppen/banana/pkg/module"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -25,9 +25,9 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if !fs.Exists(fileName) {
-				return fmt.Errorf("kmaint file not found")
+				return fmt.Errorf("banana file not found")
 			}
-			kf := kmaintfile.NewKmaintFile(fs)
+			kf := bananafile.NewBananaFile(fs)
 			km, err := kf.Read(fileName)
 			if err != nil {
 				return err
@@ -51,7 +51,7 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 		&fileName,
 		"filename",
 		"f",
-		"kmaint.yaml",
+		"banana.yaml",
 		"The files that contain the configurations to apply.")
 	return c
 }

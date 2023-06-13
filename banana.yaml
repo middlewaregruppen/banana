@@ -1,4 +1,4 @@
-kind: Konf
+kind: Banana
 apiVersion: konf.io/v1alpha1
 name: integration
 version: 1.0.0
@@ -6,7 +6,7 @@ clusters:
 - name: hubble-experiments
   version: 2.4.5
   ingress: 
-    urlFormat: "$1-$2.k8s.amimof.com"
+    urlFormat: "$1-$2.k8s.mdlwr.com"
 modules:
 - name: monitoring/grafana
   version: 1.4.4

@@ -1,18 +1,18 @@
-# kmaint
+# banana
 
-[![Release](https://github.com/amimof/kmaint/actions/workflows/release.yaml/badge.svg)](https://github.com/amimof/kmaint/actions/workflows/release.yaml)
+[![Release](https://github.com/middlewaregruppen/banana/actions/workflows/release.yaml/badge.svg)](https://github.com/middlewaregruppen/banana/actions/workflows/release.yaml)
 
-`kmaint` is a command line utility that generates Kubernetes configuration from a declarative specification
+`banana` is a command line utility that generates Kubernetes configuration from a declarative specification
 
-**Work in progress** *kmaint is still under active development and most features are still in an idéa phase. Please check in from time to time for follow the progress* 🧡
+**Work in progress** *banana is still under active development and most features are still in an idéa phase. Please check in from time to time for follow the progress* 🧡
 
 
-## The `kmaint.yaml` file
+## The `banana.yaml` file
 
-This file describes how you application will ultimately look like. Kmaint will generate either `Kustomize` or `Helm` manifests (depending on the module) and place everything in `src/`. 
+This file describes how you application will ultimately look like. Banana will generate either `Kustomize` or `Helm` manifests (depending on the module) and place everything in `src/`. 
 
 ```yaml
-kind: Konf
+kind: Banana
 apiVersion: konf.io/v1alpha1
 name: integration
 modules:
@@ -31,4 +31,4 @@ modules:
 
 ## Getting startet
 
-Download kmaint from [Releases](https://github.com/amimof/kmaint/releases)
+Download banana from [Releases](https://github.com/middlewaregruppen/banana/releases)
