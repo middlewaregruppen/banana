@@ -41,12 +41,15 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 			var b bytes.Buffer
 			writer := bufio.NewWriter(&b)
 
+			// Init loader for loading modules
+			l := module.NewLoader(fs)
+
 			// Range over each module. A module is a structure of Go template files.
 			// Following code will clone the folder structure of each module, generate
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
 				logrus.Infof("Parsing module %s\n", m.Name)
-				mod, err := module.Parse(m)
+				mod, err := l.Parse(m)
 				if err != nil {
 					return err
 				}
@@ -61,7 +64,11 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 				if err = mod.Build(writer); err != nil {
 					return err
 				}
-
+				// Save to disk
+				logrus.Infof("Saving module %s to %s", mod.Name(), srcPath)
+				if err := mod.Save(srcPath); err != nil {
+					return err
+				}
 			}
 			return err
 		},

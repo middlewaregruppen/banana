@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/loader"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 
@@ -21,17 +20,28 @@ var (
 type Module interface {
 	Version() string
 	Name() string
+	Save(string) error
 	Build(io.Writer) error
 }
 
+type Loader struct {
+	fsys filesys.FileSystem
+}
+
+func NewLoader(fsys filesys.FileSystem) *Loader {
+	return &Loader{
+		fsys: fsys,
+	}
+}
+
 // Parse parses a module by its name and returns a module instance
-func Parse(mod types.Module) (Module, error) {
+func (l *Loader) Parse(mod types.Module) (Module, error) {
 
 	var err error
 	var m Module
 
 	// Try with Kustomize
-	m, err = tryKustomize(mod)
+	m, err = NewKustomizeModule(l.fsys, mod)
 	if err == nil {
 		logrus.Debugf("kustomize module detected: %s", mod.Name)
 		return m, err
@@ -44,37 +54,6 @@ func Parse(mod types.Module) (Module, error) {
 
 	// Try with Helm
 	return nil, fmt.Errorf("unable to recognise %s as a module using any of the supported module implementations", mod.Name)
-}
-
-func tryKustomize(mod types.Module) (*kustomizeModule, error) {
-
-	// Prepend "modules/" if module is local
-	moduleName := mod.Name
-	moduleURL := mod.Name
-	if !IsRemote(moduleURL) {
-		moduleURL = fmt.Sprintf("%s/%s", "modules", mod.Name)
-	}
-
-	// Append ref in URL if version is provided
-	if IsRemote(moduleURL) && len(mod.Version) > 0 {
-		moduleName, _ = getModuleNameFromURL(mod.Name)
-		moduleURL = fmt.Sprintf("%s?ref=%s", strings.TrimRight(mod.Name, "/"), mod.Version)
-	}
-
-	logrus.Debugf("module source is %s", moduleURL)
-
-	fsys := filesys.MakeFsOnDisk()
-	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
-	res, err := k.Run(fsys, moduleURL)
-	if err != nil {
-		return nil, err
-	}
-
-	return &kustomizeModule{
-		version: mod.Version,
-		name:    moduleName,
-		resmap:  res,
-	}, nil
 }
 
 func getModuleNameFromURL(urlstring string) (string, error) {
