@@ -10,7 +10,3 @@ clusters:
 modules:
 - name: ingress/nginx
   opts: {}
-# - name: monitoring/prometheus
-#   opts:
-#     version: 2.11
-#     namespace: prometheus
