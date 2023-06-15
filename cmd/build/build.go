@@ -1,7 +1,11 @@
 package build
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/middlewaregruppen/banana/pkg/bananafile"
 	"github.com/middlewaregruppen/banana/pkg/module"
@@ -15,13 +19,14 @@ import (
 
 var (
 	fileName string
+	output   string
 )
 
-func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
+func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 	c := &cobra.Command{
 		Use: "build",
 		//Aliases: []string{""},
-		Short: "Builds kustmizations from konf",
+		Short: "Builds sources from bnanana specification",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if !fs.Exists(fileName) {
@@ -33,13 +38,27 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 				return err
 			}
 
+			var b bytes.Buffer
+			writer := bufio.NewWriter(&b)
+
 			// Range over each module. A module is a structure of Go template files.
 			// Following code will clone the folder structure of each module, generate
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
-				logrus.Infof("Building module %s\n", m.Name)
-				mod := module.Load(module.WithParentOpts(km, m))
-				if err = mod.Build(); err != nil {
+				logrus.Infof("Parsing module %s\n", m.Name)
+				mod, err := module.Parse(m)
+				if err != nil {
+					return err
+				}
+				// Create module folder structure
+				srcPath := fmt.Sprintf("%s/%s", "src", mod.Name())
+				err = os.MkdirAll(srcPath, os.ModePerm)
+				if err != nil {
+					return err
+				}
+				// Build Module
+				logrus.Infof("Building module %s to %s\n", mod.Name(), srcPath)
+				if err = mod.Build(writer); err != nil {
 					return err
 				}
 
@@ -53,5 +72,12 @@ func NewCmdBuild(fs filesys.FileSystem) *cobra.Command {
 		"f",
 		"banana.yaml",
 		"The files that contain the configurations to apply.")
+	c.Flags().StringVarP(
+		&output,
+		"output",
+		"o",
+		"stdout",
+		"build banana specifiction to either stdout or filesystem",
+	)
 	return c
 }

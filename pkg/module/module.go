@@ -2,13 +2,14 @@ package module
 
 import (
 	"fmt"
-	"html/template"
 	"io"
 	"net/url"
-	"os"
-	"path"
-	"path/filepath"
 	"strings"
+
+	"github.com/sirupsen/logrus"
+	"sigs.k8s.io/kustomize/api/krusty"
+	"sigs.k8s.io/kustomize/api/loader"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 
 	"github.com/middlewaregruppen/banana/api/types"
 )
@@ -18,121 +19,75 @@ var (
 )
 
 type Module interface {
-	Build() error
+	Version() string
+	Name() string
+	Build(io.Writer) error
 }
 
-type builtinModule struct {
-	opts types.ModuleOpts
-}
+// Parse parses a module by its name and returns a module instance
+func Parse(mod types.Module) (Module, error) {
 
-type remoteModule struct {
-	opts types.ModuleOpts
-}
+	var err error
+	var m Module
 
-func (m builtinModule) Build() error {
-	// Create the folder structure
-	modulePath := fmt.Sprintf("%s/%s", "modules", m.opts.ModuleName())
-	srcPath := fmt.Sprintf("%s/%s", "src", m.opts.ModuleName())
-
-	// First we check if module exists
-	if _, err := os.Stat(modulePath); os.IsNotExist(err) {
-		return err
+	// Try with Kustomize
+	m, err = tryKustomize(mod)
+	if err == nil {
+		logrus.Debugf("kustomize module detected: %s", mod.Name)
+		return m, err
 	}
 
-	// Create folder structure
-	err := os.MkdirAll(srcPath, os.ModePerm)
+	// Handle any errors that may have been encountered this far
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("unable to parse module due to an error: %s", err)
 	}
 
-	// Walk the folder structure and attempt to find template files
-	err = filepath.Walk(modulePath, func(rel string, info os.FileInfo, err error) error {
-
-		// Ignore directories
-		if info.IsDir() {
-			return err
-		}
-
-		// Replace leading path "modules/" with "src/" and create folder structure within it
-		dirs := strings.Split(rel, string(os.PathSeparator))
-		dirs[0] = "src"
-		dstName := path.Join(dirs...)
-		dstDir := filepath.Dir(dstName)
-		err = os.MkdirAll(dstDir, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
-		// Remove template suffix from file name
-		if strings.HasSuffix(dstName, TemplateSuffix) {
-			dstName = path.Join(dstDir, info.Name()[:len(info.Name())-len(TemplateSuffix)])
-		}
-
-		// Stat file and check if it's a regular file
-		srcStat, err := os.Stat(rel)
-		if err != nil {
-			return err
-		}
-		if !srcStat.Mode().IsRegular() {
-			return err
-		}
-
-		// Open file for reading
-		srcFile, err := os.Open(rel)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
-
-		// Create destination file which we will be writing to
-		dstFile, err := os.Create(dstName)
-		if err != nil {
-			return err
-		}
-		defer dstFile.Close()
-
-		// We only care about files ending in .tmpl when templating
-		if !strings.HasSuffix(rel, TemplateSuffix) {
-			_, err = io.Copy(dstFile, srcFile)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Parse template injecting variables into it
-		tmpl, err := template.ParseFiles(rel)
-		if err != nil {
-			return err
-		}
-
-		// Write output to file
-		err = tmpl.Execute(dstFile, m.opts)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	return err
+	// Try with Helm
+	return nil, fmt.Errorf("unable to recognise %s as a module using any of the supported module implementations", mod.Name)
 }
 
-func (m remoteModule) Build() error {
-	return nil
-}
+func tryKustomize(mod types.Module) (*kustomizeModule, error) {
 
-func LoadBuiltin(opts types.ModuleOpts) Module {
-	return &builtinModule{opts: opts}
-}
-
-func LoadRemote(opts types.ModuleOpts, u *url.URL) Module {
-	return &remoteModule{opts: opts}
-}
-
-func Load(m types.ModuleOpts) Module {
-	if u, err := url.ParseRequestURI(m.ModuleName()); err == nil {
-		return LoadRemote(m, u)
+	// Prepend "modules/" if module is local
+	moduleName := mod.Name
+	moduleURL := mod.Name
+	if !IsRemote(moduleURL) {
+		moduleURL = fmt.Sprintf("%s/%s", "modules", mod.Name)
 	}
-	// If all above fail then it must be a builtin module
-	return LoadBuiltin(m)
+
+	// Append ref in URL if version is provided
+	if IsRemote(moduleURL) && len(mod.Version) > 0 {
+		moduleName, _ = getModuleNameFromURL(mod.Name)
+		moduleURL = fmt.Sprintf("%s?ref=%s", strings.TrimRight(mod.Name, "/"), mod.Version)
+	}
+
+	logrus.Debugf("module source is %s", moduleURL)
+
+	fsys := filesys.MakeFsOnDisk()
+	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
+	res, err := k.Run(fsys, moduleURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kustomizeModule{
+		version: mod.Version,
+		name:    moduleName,
+		resmap:  res,
+	}, nil
+}
+
+func getModuleNameFromURL(urlstring string) (string, error) {
+	u, err := url.Parse(urlstring)
+	if err != nil {
+		return "", err
+	}
+	res := strings.TrimLeft(u.Path, "/")
+	return res, nil
+}
+
+func IsRemote(name string) bool {
+	return loader.IsRemoteFile(name)
 }
 
 func WithParentOpts(km *types.BananaFile, m types.Module) types.ModuleOpts {

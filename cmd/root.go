@@ -48,7 +48,7 @@ func NewDefaultCommand() *cobra.Command {
 	// Setup sub-commands
 	c.AddCommand(version.NewCmdVersion(stdOut))
 	c.AddCommand(create.NewCmdCreate(fs))
-	c.AddCommand(build.NewCmdBuild(fs))
+	c.AddCommand(build.NewCmdBuild(fs, stdOut))
 
 	return c
 }
