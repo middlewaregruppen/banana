@@ -1,8 +1,6 @@
 package build
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -38,8 +36,8 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 				return err
 			}
 
-			var b bytes.Buffer
-			writer := bufio.NewWriter(&b)
+			//var b bytes.Buffer
+			//writer := bufio.NewWriter(&b)
 
 			// Init loader for loading modules
 			l := module.NewLoader(fs)
@@ -60,10 +58,10 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 					return err
 				}
 				// Build Module
-				logrus.Infof("Building module %s to %s\n", mod.Name(), srcPath)
-				if err = mod.Build(writer); err != nil {
-					return err
-				}
+				// logrus.Infof("Building module %s to %s\n", mod.Name(), srcPath)
+				// if err = mod.Build(writer); err != nil {
+				// 	return err
+				// }
 				// Save to disk
 				logrus.Infof("Saving module %s to %s", mod.Name(), srcPath)
 				if err := mod.Save("src"); err != nil {

@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"sigs.k8s.io/kustomize/api/loader"
-
-	"github.com/middlewaregruppen/banana/api/types"
 )
 
 var (
@@ -34,7 +32,6 @@ func moduleNameFromURL(urlstring string) (string, error) {
 			s = p[1]
 		}
 	}
-	//res := strings.TrimLeft(u.Path, "/")
 	return s, nil
 }
 
@@ -53,16 +50,18 @@ func gitURLFromSource(src string) (string, error) {
 	return s, nil
 }
 
-func IsRemote(name string) bool {
-	return loader.IsRemoteFile(name)
+func gitRefFromSource(src string) (string, error) {
+	s := ""
+	u, err := url.Parse(src)
+	if err != nil {
+		return s, err
+	}
+	if ref := u.Query().Get("ref"); len(ref) > 0 {
+		s = ref
+	}
+	return s, nil
 }
 
-func WithParentOpts(km *types.BananaFile, m types.Module) types.ModuleOpts {
-	newModule := m
-	newModule.Opts["Name"] = km.Name
-	newModule.Opts["Version"] = km.Version
-	newModule.Opts["Metadata"] = km.MetaData
-	newModule.Opts["Clusters"] = km.Clusters
-	newModule.Opts["Module"] = m
-	return newModule.Opts
+func IsRemote(name string) bool {
+	return loader.IsRemoteFile(name)
 }

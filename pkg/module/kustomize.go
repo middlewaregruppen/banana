@@ -1,12 +1,10 @@
 package module
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/middlewaregruppen/banana/api/types"
 	"github.com/middlewaregruppen/banana/pkg/git"
@@ -25,24 +23,30 @@ var DefaultKustomizerOptions = &krusty.Options{
 }
 
 type KustomizeModule struct {
-	resmap  resmap.ResMap
-	name    string
-	url     string
-	version string
-	fs      filesys.FileSystem
+	mod    types.Module
+	resmap resmap.ResMap
+	fs     filesys.FileSystem
 }
 
+// Name returns a human readable version of this module.
+// Returns m.Version if there is a value assigned. Otherwise
+// the URL will be used to construct a value
 func (m *KustomizeModule) Name() string {
-	n, _ := moduleNameFromURL(m.name)
+	n, _ := moduleNameFromURL(m.mod.Name)
 	return n
 }
 
 func (m *KustomizeModule) Version() string {
-	return m.version
+	if len(m.mod.Version) > 0 {
+		return m.mod.Version
+	}
+	v, _ := gitRefFromSource(m.mod.Name)
+	return v
 }
 
 func (m *KustomizeModule) URL() string {
-	return m.url
+	u, _ := gitURLFromSource(m.mod.Name)
+	return u
 }
 
 func (m *KustomizeModule) Build(w io.Writer) error {
@@ -69,18 +73,13 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 }
 
 func (m *KustomizeModule) Save(rootpath string) error {
-	cloneURL, err := gitURLFromSource(m.url)
-	if err != nil {
-		return err
-	}
-	clonePath, err := moduleNameFromURL(m.url)
-	if err != nil {
-		return err
-	}
-	logrus.Debugf("Will clone %s %s", cloneURL, clonePath)
+	cloneURL := m.URL()
+	clonePath := m.Name()
+	cloneTag := m.Version()
+	logrus.Debugf("Will clone %s version %s into %s", cloneURL, cloneTag, clonePath)
 
 	tmpfs := filesys.MakeFsInMemory()
-	err = git.Clone(tmpfs, cloneURL, clonePath)
+	err := git.Clone(tmpfs, cloneURL, cloneTag, clonePath)
 	if err != nil {
 		return err
 	}
@@ -131,26 +130,8 @@ func (m *KustomizeModule) Save(rootpath string) error {
 }
 
 func NewKustomizeModule(fs filesys.FileSystem, mod types.Module) (*KustomizeModule, error) {
-
-	// Prepend "modules/" if module is local
-	moduleName := mod.Name
-	moduleURL := mod.Name
-	if !IsRemote(moduleURL) {
-		moduleURL = fmt.Sprintf("%s/%s", "modules", mod.Name)
-	}
-
-	// Append ref in URL if version is provided
-	if IsRemote(moduleURL) && len(mod.Version) > 0 {
-		moduleName, _ = moduleNameFromURL(mod.Name)
-		moduleURL = fmt.Sprintf("%s?ref=%s", strings.TrimRight(mod.Name, "/"), mod.Version)
-	}
-
-	logrus.Debugf("module source is %s", moduleURL)
-
 	return &KustomizeModule{
-		version: mod.Version,
-		name:    moduleName,
-		fs:      fs,
-		url:     moduleURL,
+		fs:  fs,
+		mod: mod,
 	}, nil
 }

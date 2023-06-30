@@ -8,15 +8,35 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-billy/v5/util"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
-func Clone(fsys filesys.FileSystem, targetURL, targetPath string) error {
+// Clone performs a git clone using into targetPath.
+// If fsys is nil, an in-memory temporary filesystem will be used.
+func Clone(fsys filesys.FileSystem, cloneURL, cloneTag, targetPath string) error {
+
+	// Init filesystem
+	if fsys == nil {
+		fsys = filesys.MakeFsInMemory()
+	}
+
+	// Use HEAD if tag is not provided
+	ref := plumbing.HEAD
+	if len(cloneTag) > 0 {
+		ref = plumbing.NewTagReferenceName(cloneTag)
+	}
+
+	// Setup storage for go-git
 	fs := memfs.New()
 	mem := memory.NewStorage()
+
+	// Clone
 	_, err := git.Clone(mem, fs, &git.CloneOptions{
-		URL: targetURL,
+		URL:           cloneURL,
+		ReferenceName: ref,
+		Depth:         1,
 	})
 	if err != nil {
 		return err
