@@ -16,6 +16,7 @@ var v string
 
 func NewDefaultCommand() *cobra.Command {
 	fs := filesys.MakeFsOnDisk()
+	//fs := filesys.MakeFsInMemory()
 	stdOut := os.Stdout
 	c := &cobra.Command{
 		SilenceUsage:  true,

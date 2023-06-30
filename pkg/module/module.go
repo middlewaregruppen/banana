@@ -20,6 +20,7 @@ var (
 type Module interface {
 	Version() string
 	Name() string
+	URL() string
 	Save(string) error
 	Build(io.Writer) error
 }
@@ -56,13 +57,35 @@ func (l *Loader) Parse(mod types.Module) (Module, error) {
 	return nil, fmt.Errorf("unable to recognise %s as a module using any of the supported module implementations", mod.Name)
 }
 
-func getModuleNameFromURL(urlstring string) (string, error) {
-	u, err := url.Parse(urlstring)
+func moduleNameFromURL(urlstring string) (string, error) {
+	s := urlstring
+	u, err := url.Parse(s)
 	if err != nil {
-		return "", err
+		return s, err
 	}
-	res := strings.TrimLeft(u.Path, "/")
-	return res, nil
+	if strings.Contains(u.Path, "//") {
+		p := strings.Split(u.Path, "//")
+		if len(p) >= 2 {
+			s = p[1]
+		}
+	}
+	//res := strings.TrimLeft(u.Path, "/")
+	return s, nil
+}
+
+func gitURLFromSource(src string) (string, error) {
+	s := src
+	u, err := url.Parse(s)
+	if err != nil {
+		return s, err
+	}
+	if strings.Contains(u.Path, "//") {
+		p := strings.Split(u.Path, "//")
+		if len(p) >= 1 {
+			s = strings.Replace(s, u.Path, p[0], 1)
+		}
+	}
+	return s, nil
 }
 
 func IsRemote(name string) bool {
