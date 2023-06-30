@@ -49,7 +49,7 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
 				logrus.Infof("Parsing module %s\n", m.Name)
-				mod, err := l.Parse(m)
+				mod, err := l.Load(m)
 				if err != nil {
 					return err
 				}
