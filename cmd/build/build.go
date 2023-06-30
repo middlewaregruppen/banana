@@ -66,7 +66,7 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 				}
 				// Save to disk
 				logrus.Infof("Saving module %s to %s", mod.Name(), srcPath)
-				if err := mod.Save(srcPath); err != nil {
+				if err := mod.Save("src"); err != nil {
 					return err
 				}
 			}

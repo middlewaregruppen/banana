@@ -8,5 +8,4 @@ clusters:
   ingress: 
     urlFormat: "$1-$2.k8s.mdlwr.com"
 modules:
-- name: ingress/nginx
-  opts: {}
+- name: https://github.com/sighupio/fury-kubernetes-ingress//katalog/nginx
