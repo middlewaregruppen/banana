@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-billy/v5/util"
 	"github.com/go-git/go-git/v5"
@@ -12,6 +13,24 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
+
+type Cloner struct {
+	URL        string
+	Tag        string
+	TargetPath string
+	SubDir     string
+	fsys       filesys.FileSystem
+}
+
+func CloneSubdir(fsys filesys.FileSystem, cloneURL, cloneTag, targetPath string) error {
+	return nil
+}
+
+//func CopyDir
+
+func CopyToFS(from billy.Filesystem, to filesys.FileSystem) error {
+	return nil
+}
 
 // Clone performs a git clone using into targetPath.
 // If fsys is nil, an in-memory temporary filesystem will be used.
@@ -36,8 +55,10 @@ func Clone(fsys filesys.FileSystem, cloneURL, cloneTag, targetPath string) error
 	_, err := git.Clone(mem, fs, &git.CloneOptions{
 		URL:           cloneURL,
 		ReferenceName: ref,
-		Depth:         1,
+		//SingleBranch: true, 	// SingleBranch: true doesn't work together with ReferenceName when remote repo uses main instead of master as branch name
+		Depth: 1,
 	})
+
 	if err != nil {
 		return err
 	}

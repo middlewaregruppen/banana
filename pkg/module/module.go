@@ -16,6 +16,7 @@ type Module interface {
 	Version() string
 	Name() string
 	URL() string
+	Resolve() error
 	Save(string) error
 	Build(io.Writer) error
 }
@@ -26,6 +27,8 @@ func moduleNameFromURL(urlstring string) (string, error) {
 	if err != nil {
 		return s, err
 	}
+	//
+	s = strings.Trim(u.Path, "/")
 	if strings.Contains(u.Path, "//") {
 		p := strings.Split(u.Path, "//")
 		if len(p) >= 2 {

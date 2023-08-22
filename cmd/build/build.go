@@ -46,7 +46,7 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 			// Following code will clone the folder structure of each module, generate
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
-				logrus.Infof("Parsing module %s\n", m.Name)
+				logrus.Infof("preparing module %s\n", m.Name)
 				mod, err := l.Load(m)
 				if err != nil {
 					return err
@@ -63,7 +63,7 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 				// 	return err
 				// }
 				// Save to disk
-				logrus.Infof("Saving module %s to %s", mod.Name(), srcPath)
+				logrus.Infof("saving module %s (%s) to %s", mod.Name(), mod.Version(), srcPath)
 				if err := mod.Save("src"); err != nil {
 					return err
 				}

@@ -49,6 +49,17 @@ func (m *KustomizeModule) URL() string {
 	return u
 }
 
+func (m *KustomizeModule) Resolve() error {
+	tmpfs := filesys.MakeFsInMemory()
+	err := git.Clone(tmpfs, m.URL(), m.Version(), ".")
+	if err != nil {
+		return err
+	}
+	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
+	_, err = k.Run(tmpfs, m.Name())
+	return err
+}
+
 func (m *KustomizeModule) Build(w io.Writer) error {
 
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
@@ -129,9 +140,9 @@ func (m *KustomizeModule) Save(rootpath string) error {
 	})
 }
 
-func NewKustomizeModule(fs filesys.FileSystem, mod types.Module) (*KustomizeModule, error) {
+func NewKustomizeModule(fs filesys.FileSystem, mod types.Module) *KustomizeModule {
 	return &KustomizeModule{
 		fs:  fs,
 		mod: mod,
-	}, nil
+	}
 }
