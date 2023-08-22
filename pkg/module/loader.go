@@ -17,10 +17,10 @@ type Loader struct {
 func (l *Loader) Load(mod types.Module) (Module, error) {
 
 	var err error
-	var m Module
 
 	// Try with Kustomize
-	m, err = NewKustomizeModule(l.fsys, mod)
+	m := NewKustomizeModule(l.fsys, mod)
+	err = m.Resolve()
 	if err == nil {
 		logrus.Debugf("kustomize module detected: %s", mod.Name)
 		l.mods = append(l.mods, m)
