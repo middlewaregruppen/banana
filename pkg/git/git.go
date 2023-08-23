@@ -19,14 +19,11 @@ type Cloner struct {
 	Tag        string
 	TargetPath string
 	SubDir     string
-	fsys       filesys.FileSystem
 }
 
 func CloneSubdir(fsys filesys.FileSystem, cloneURL, cloneTag, targetPath string) error {
 	return nil
 }
-
-//func CopyDir
 
 func CopyToFS(from billy.Filesystem, to filesys.FileSystem) error {
 	return nil
