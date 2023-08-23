@@ -5,6 +5,7 @@ import (
 
 	"github.com/middlewaregruppen/banana/cmd/build"
 	"github.com/middlewaregruppen/banana/cmd/create"
+	"github.com/middlewaregruppen/banana/cmd/save"
 	"github.com/middlewaregruppen/banana/cmd/version"
 	"github.com/sirupsen/logrus"
 
@@ -50,6 +51,7 @@ func NewDefaultCommand() *cobra.Command {
 	c.AddCommand(version.NewCmdVersion(stdOut))
 	c.AddCommand(create.NewCmdCreate(fs))
 	c.AddCommand(build.NewCmdBuild(fs, stdOut))
+	c.AddCommand(save.NewCmdSave(fs, stdOut))
 
 	return c
 }

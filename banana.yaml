@@ -3,9 +3,12 @@ apiVersion: konf.io/v1alpha1
 name: integration
 version: 1.0.0
 modules:
-- name: https://github.com/sighupio/fury-kubernetes-ingress//katalog/nginx
-  version: v1.14.1
-- name: https://github.com/sighupio/fury-kubernetes-ingress//katalog/cert-manager
-- name: https://github.com/sighupio/fury-kubernetes-ingress//katalog/forecastle
-  version: v1.11.1
-- name: https://github.com/ZeroDeth/cert-manager//dev
+# - name: https://github.com/sighupio/fury-kubernetes-ingress//katalog/nginx
+#   version: v1.14.1
+# - name: https://github.com/sighupio/fury-kubernetes-ingress//katalog/cert-manager
+# - name: https://github.com/sighupio/fury-kubernetes-ingress//katalog/forecastle
+#   version: v1.11.1
+# - name: https://github.com/ZeroDeth/cert-manager//dev
+- name: https://github.com/middlewaregruppen/banana-modules//ingress/nginx
+  components:
+  - name: 'https://github.com/middlewaregruppen/banana-modules//ingress/nginx/tls'
