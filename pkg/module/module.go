@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/middlewaregruppen/banana/api/types"
+
 	"sigs.k8s.io/kustomize/api/loader"
 )
 
@@ -16,6 +18,7 @@ type Module interface {
 	Version() string
 	Name() string
 	URL() string
+	Components() []types.Component
 	Resolve() error
 	Save(string) error
 	Build(io.Writer) error

@@ -1,6 +1,7 @@
 package module
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -9,6 +10,7 @@ import (
 	"github.com/middlewaregruppen/banana/api/types"
 	"github.com/middlewaregruppen/banana/pkg/git"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
 	ktypes "sigs.k8s.io/kustomize/api/types"
@@ -18,7 +20,7 @@ import (
 var DefaultKustomizerOptions = &krusty.Options{
 	Reorder:           krusty.ReorderOptionNone,
 	AddManagedbyLabel: false,
-	LoadRestrictions:  ktypes.LoadRestrictionsRootOnly,
+	LoadRestrictions:  ktypes.LoadRestrictionsNone,
 	PluginConfig:      ktypes.DisabledPluginConfig(),
 }
 
@@ -49,6 +51,10 @@ func (m *KustomizeModule) URL() string {
 	return u
 }
 
+func (m *KustomizeModule) Components() []types.Component {
+	return m.mod.Components
+}
+
 func (m *KustomizeModule) Resolve() error {
 	tmpfs := filesys.MakeFsInMemory()
 	err := git.Clone(tmpfs, m.URL(), m.Version(), ".")
@@ -62,8 +68,70 @@ func (m *KustomizeModule) Resolve() error {
 
 func (m *KustomizeModule) Build(w io.Writer) error {
 
+	// Create a surface area for the kustomization
+	tmpfs := filesys.MakeFsInMemory()
+
+	// Create kustomization file in tmp fs
+	kf, err := tmpfs.Create("kustomization.yaml")
+	if err != nil {
+		return err
+	}
+	kf.Close()
+
+	fmt.Println("exists?", tmpfs.Exists("kustomization.yaml"))
+	// Compose the kustomiation file and encode it into yaml
+	content := ktypes.Kustomization{
+		TypeMeta: ktypes.TypeMeta{
+			Kind:       ktypes.KustomizationKind,
+			APIVersion: ktypes.KustomizationVersion,
+		},
+		Resources:  []string{m.Name()},
+		Components: []string{},
+	}
+
+	// Clone module into tmp fs
+	err = git.Clone(tmpfs, m.URL(), m.Version(), m.Name())
+	if err != nil {
+		return err
+	}
+
+	// Clone every component into tmp fs
+	for _, c := range m.Components() {
+		cName, err := moduleNameFromURL(c.Name)
+		if err != nil {
+			return err
+		}
+		cURL, err := gitURLFromSource(c.Name)
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("cloning %s (%s) to %s", c.Name, c.Version, cName)
+		err = git.Clone(tmpfs, cURL, c.Version, cName)
+		if err != nil {
+			return err
+		}
+		content.Components = append(content.Components, cName)
+	}
+
+	b, err := yaml.Marshal(&content)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s\n", string(b))
+
+	// _, err = kf.Write(b)
+	// if err != nil {
+	// 	return err
+	// }
+
+	err = tmpfs.WriteFile("/kustomization.yaml", b)
+	if err != nil {
+		return err
+	}
+
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
-	res, err := k.Run(m.fs, m.URL())
+	res, err := k.Run(tmpfs, ".")
 	if err != nil {
 		return err
 	}

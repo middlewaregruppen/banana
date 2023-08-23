@@ -1,4 +1,4 @@
-package build
+package save
 
 import (
 	"fmt"
@@ -20,11 +20,11 @@ var (
 	output   string
 )
 
-func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
+func NewCmdSave(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 	c := &cobra.Command{
-		Use: "build",
+		Use: "save",
 		//Aliases: []string{""},
-		Short: "Builds sources from bnanana specification",
+		Short: "Fetch remove module and save locally",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if !fs.Exists(fileName) {
@@ -35,9 +35,6 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			//var b bytes.Buffer
-			//writer := bufio.NewWriter(&b)
 
 			// Init loader for loading modules
 			l := module.NewLoader(fs)
@@ -57,9 +54,9 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				// Assemble module and components
-				logrus.Infof("assembling %d components", len(mod.Components()))
-				if err = mod.Build(os.Stdout); err != nil {
+				// Save to disk
+				logrus.Infof("saving module %s (%s) to %s", mod.Name(), mod.Version(), srcPath)
+				if err := mod.Save("src"); err != nil {
 					return err
 				}
 			}
@@ -77,7 +74,7 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 		"output",
 		"o",
 		"stdout",
-		"build banana specifiction to either stdout or filesystem",
+		"save banana specifiction to either stdout or filesystem",
 	)
 	return c
 }

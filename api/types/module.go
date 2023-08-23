@@ -14,15 +14,9 @@ type Module struct {
 
 	// Opt is options that can be passed to this module
 	Opts ModuleOpts `json:"opts,omitempty" yaml:"opts,omitempty"`
+
+	// Components is a list of components for this module
+	Components []Component `json:"components,omitempty" yaml:"components,omitempty"`
 }
 
 type ModuleOpts map[string]interface{}
-
-func (m ModuleOpts) ModuleName() string {
-	if val, ok := m["Module"]; ok {
-		if mod, ok := val.(Module); ok {
-			return mod.Name
-		}
-	}
-	return ""
-}
