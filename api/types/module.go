@@ -16,7 +16,7 @@ type Module struct {
 	Opts ModuleOpts `json:"opts,omitempty" yaml:"opts,omitempty"`
 
 	// Components is a list of components for this module
-	Components []Component `json:"components,omitempty" yaml:"components,omitempty"`
+	Components []string `json:"components,omitempty" yaml:"components,omitempty"`
 }
 
 type ModuleOpts map[string]interface{}
