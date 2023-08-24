@@ -9,25 +9,24 @@
 
 ## The `banana.yaml` file
 
-This file describes how you application will ultimately look like. Banana will generate either `Kustomize` or `Helm` manifests (depending on the module) and place everything in `src/`. 
+This file describes how your application will ultimately look like. For example
 
 ```yaml
 kind: Banana
 apiVersion: konf.io/v1alpha1
-name: integration
 modules:
 - name: monitoring/grafana
-  opts:
-    version: 1.4.4
-    namespace: infra-monitoring
-- name: ingress/traefik
-  opts:
-    version: 2.2.2
+  components:
+  - dashboards
+  - loki
+- name: ingress/nginx
+  components:
+  - tls
 - name: auth/dex
-  opts:
-    version: 4.1.1
-    namespace: kube-system
+  version: v3.1.14
 ```
+
+Then build with `banana build`
 
 ## Getting startet
 
