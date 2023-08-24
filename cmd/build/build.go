@@ -20,7 +20,7 @@ var (
 	output   string
 )
 
-func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
+func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Command {
 	c := &cobra.Command{
 		Use: "build",
 		//Aliases: []string{""},
@@ -46,11 +46,9 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 			// Following code will clone the folder structure of each module, generate
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
-				logrus.Infof("preparing module %s\n", m.Name)
-				mod, err := l.Load(m)
-				if err != nil {
-					return err
-				}
+				logrus.Infof("building module %s holding %d component(s) \n", m.Name, len(m.Components))
+				mod := l.Load(m, prefix)
+
 				// Create module folder structure
 				srcPath := fmt.Sprintf("%s/%s", "src", mod.Name())
 				err = os.MkdirAll(srcPath, os.ModePerm)
@@ -58,7 +56,6 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 					return err
 				}
 				// Assemble module and components
-				logrus.Infof("assembling %d components", len(mod.Components()))
 				if err = mod.Build(os.Stdout); err != nil {
 					return err
 				}

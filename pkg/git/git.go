@@ -14,13 +14,6 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
-type Cloner struct {
-	URL        string
-	Tag        string
-	TargetPath string
-	SubDir     string
-}
-
 func CloneSubdir(fsys filesys.FileSystem, cloneURL, cloneTag, targetPath string) error {
 	return nil
 }

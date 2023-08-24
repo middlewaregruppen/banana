@@ -20,7 +20,7 @@ var (
 	output   string
 )
 
-func NewCmdSave(fs filesys.FileSystem, w io.Writer) *cobra.Command {
+func NewCmdSave(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Command {
 	c := &cobra.Command{
 		Use: "save",
 		//Aliases: []string{""},
@@ -44,10 +44,8 @@ func NewCmdSave(fs filesys.FileSystem, w io.Writer) *cobra.Command {
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
 				logrus.Infof("preparing module %s\n", m.Name)
-				mod, err := l.Load(m)
-				if err != nil {
-					return err
-				}
+				mod := l.Load(m, prefix)
+
 				// Create module folder structure
 				srcPath := fmt.Sprintf("%s/%s", "src", mod.Name())
 				err = os.MkdirAll(srcPath, os.ModePerm)

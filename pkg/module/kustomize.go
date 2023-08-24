@@ -28,13 +28,17 @@ type KustomizeModule struct {
 	mod    types.Module
 	resmap resmap.ResMap
 	fs     filesys.FileSystem
+	prefix string
 }
 
 // Name returns a human readable version of this module.
 // Returns m.Version if there is a value assigned. Otherwise
 // the URL will be used to construct a value
 func (m *KustomizeModule) Name() string {
-	n, _ := moduleNameFromURL(m.mod.Name)
+	n := m.mod.Name
+	if IsRemote(m.mod.Name) {
+		n, _ = moduleNameFromURL(m.mod.Name)
+	}
 	return n
 }
 
@@ -47,11 +51,14 @@ func (m *KustomizeModule) Version() string {
 }
 
 func (m *KustomizeModule) URL() string {
-	u, _ := gitURLFromSource(m.mod.Name)
+	u := m.prefix
+	if IsRemote(m.mod.Name) {
+		u, _ = gitURLFromSource(m.mod.Name)
+	}
 	return u
 }
 
-func (m *KustomizeModule) Components() []types.Component {
+func (m *KustomizeModule) Components() []string {
 	return m.mod.Components
 }
 
@@ -61,6 +68,7 @@ func (m *KustomizeModule) Resolve() error {
 	if err != nil {
 		return err
 	}
+
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
 	_, err = k.Run(tmpfs, m.Name())
 	return err
@@ -76,9 +84,8 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	kf.Close()
+	defer kf.Close()
 
-	fmt.Println("exists?", tmpfs.Exists("kustomization.yaml"))
 	// Compose the kustomiation file and encode it into yaml
 	content := ktypes.Kustomization{
 		TypeMeta: ktypes.TypeMeta{
@@ -97,19 +104,7 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 
 	// Clone every component into tmp fs
 	for _, c := range m.Components() {
-		cName, err := moduleNameFromURL(c.Name)
-		if err != nil {
-			return err
-		}
-		cURL, err := gitURLFromSource(c.Name)
-		if err != nil {
-			return err
-		}
-		logrus.Debugf("cloning %s (%s) to %s", c.Name, c.Version, cName)
-		err = git.Clone(tmpfs, cURL, c.Version, cName)
-		if err != nil {
-			return err
-		}
+		cName := fmt.Sprintf("%s/%s", m.Name(), c)
 		content.Components = append(content.Components, cName)
 	}
 
@@ -118,14 +113,7 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 		return err
 	}
 
-	fmt.Printf("%s\n", string(b))
-
-	// _, err = kf.Write(b)
-	// if err != nil {
-	// 	return err
-	// }
-
-	err = tmpfs.WriteFile("/kustomization.yaml", b)
+	_, err = kf.Write(b)
 	if err != nil {
 		return err
 	}
@@ -208,9 +196,10 @@ func (m *KustomizeModule) Save(rootpath string) error {
 	})
 }
 
-func NewKustomizeModule(fs filesys.FileSystem, mod types.Module) *KustomizeModule {
+func NewKustomizeModule(fs filesys.FileSystem, mod types.Module, prefix string) *KustomizeModule {
 	return &KustomizeModule{
-		fs:  fs,
-		mod: mod,
+		fs:     fs,
+		mod:    mod,
+		prefix: prefix,
 	}
 }

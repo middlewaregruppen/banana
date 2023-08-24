@@ -14,6 +14,7 @@ import (
 )
 
 var v string
+var builtinModulePrefix string
 
 func NewDefaultCommand() *cobra.Command {
 	fs := filesys.MakeFsOnDisk()
@@ -46,12 +47,18 @@ func NewDefaultCommand() *cobra.Command {
 		"v",
 		"info",
 		"number for the log level verbosity (debug, info, warn, error, fatal, panic)")
+	c.PersistentFlags().StringVar(
+		&builtinModulePrefix,
+		"builtin-module-prefix",
+		"https://github.com/middlewaregruppen/banana-modules",
+		"Prefix used for builtin modules. For example ingress/nginx or monitoring/grafana",
+	)
 
 	// Setup sub-commands
 	c.AddCommand(version.NewCmdVersion(stdOut))
 	c.AddCommand(create.NewCmdCreate(fs))
-	c.AddCommand(build.NewCmdBuild(fs, stdOut))
-	c.AddCommand(save.NewCmdSave(fs, stdOut))
+	c.AddCommand(build.NewCmdBuild(fs, stdOut, builtinModulePrefix))
+	c.AddCommand(save.NewCmdSave(fs, stdOut, builtinModulePrefix))
 
 	return c
 }
