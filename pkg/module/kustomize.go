@@ -10,7 +10,7 @@ import (
 	"github.com/middlewaregruppen/banana/api/types"
 	"github.com/middlewaregruppen/banana/pkg/git"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
 	ktypes "sigs.k8s.io/kustomize/api/types"
@@ -58,6 +58,10 @@ func (m *KustomizeModule) URL() string {
 	return u
 }
 
+func (m *KustomizeModule) Namespace() string {
+	return m.mod.Namespace
+}
+
 func (m *KustomizeModule) Components() []string {
 	return m.mod.Components
 }
@@ -92,6 +96,7 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 			Kind:       ktypes.KustomizationKind,
 			APIVersion: ktypes.KustomizationVersion,
 		},
+		Namespace:  m.Namespace(),
 		Resources:  []string{m.Name()},
 		Components: []string{},
 	}
