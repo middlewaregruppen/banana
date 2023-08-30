@@ -16,6 +16,7 @@ type Module interface {
 	Version() string
 	Name() string
 	URL() string
+	Namespace() string
 	Components() []string
 	Resolve() error
 	Save(string) error

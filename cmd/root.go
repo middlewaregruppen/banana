@@ -30,7 +30,7 @@ func NewDefaultCommand() *cobra.Command {
 	- Describe application configuration that emerges into Kustomize projects
 	`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			logrus.SetOutput(os.Stdout)
+			//logrus.SetOutput(os.Stdout)
 			lvl, err := logrus.ParseLevel(v)
 			if err != nil {
 				return err

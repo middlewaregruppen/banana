@@ -46,7 +46,7 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 			// Following code will clone the folder structure of each module, generate
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
-				logrus.Infof("building module %s holding %d component(s) \n", m.Name, len(m.Components))
+				logrus.Debugf("building module %s holding %d component(s) \n", m.Name, len(m.Components))
 				mod := l.Load(m, prefix)
 
 				// Create module folder structure
