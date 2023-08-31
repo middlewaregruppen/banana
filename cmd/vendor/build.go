@@ -1,4 +1,4 @@
-package save
+package vendor
 
 import (
 	"fmt"
@@ -20,21 +20,28 @@ var (
 	output   string
 )
 
-func NewCmdSave(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Command {
+func NewCmdVendor(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Command {
 	c := &cobra.Command{
-		Use: "save",
+		Use: "vendor",
 		//Aliases: []string{""},
-		Short: "Fetch remove module and save locally",
+		Short: "Vendors sources from banana specification",
 		Long:  "",
-		RunE: func(cmd *cobra.Command, args []string) (err error) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if !fs.Exists(fileName) {
 				return fmt.Errorf("banana file not found")
 			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+
 			kf := bananafile.NewBananaFile(fs)
 			km, err := kf.Read(fileName)
 			if err != nil {
 				return err
 			}
+
+			// Make fs on disk for vendoring modules
+			fs := filesys.MakeFsOnDisk()
 
 			// Init loader for loading modules
 			l := module.NewLoader(fs)
@@ -43,7 +50,7 @@ func NewCmdSave(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comman
 			// Following code will clone the folder structure of each module, generate
 			// files in the structure using template definition.
 			for _, m := range km.Modules {
-				logrus.Infof("preparing module %s\n", m.Name)
+				logrus.Debugf("vendoring module %s holding %d component(s) \n", m.Name, len(m.Components))
 				mod := l.Load(m, prefix)
 
 				// Create module folder structure
@@ -52,9 +59,8 @@ func NewCmdSave(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comman
 				if err != nil {
 					return err
 				}
-				// Save to disk
-				logrus.Infof("saving module %s (%s) to %s", mod.Name(), mod.Version(), srcPath)
-				if err := mod.Save("src"); err != nil {
+				// Assemble module and components
+				if err = mod.Vendor("src", fs); err != nil {
 					return err
 				}
 			}
@@ -72,7 +78,7 @@ func NewCmdSave(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comman
 		"output",
 		"o",
 		"stdout",
-		"save banana specifiction to either stdout or filesystem",
+		"vendor banana specifiction to either stdout or filesystem",
 	)
 	return c
 }

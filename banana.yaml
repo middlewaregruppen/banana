@@ -1,9 +1,7 @@
 kind: Banana
 apiVersion: konf.io/v1alpha1
 modules:
-- name: monitoring/grafana
-  namespace: grafana
+- name: ingress/nginx
   components:
-  - dashboards/kubernetes/apiserver
-  - dashboards/kubernetes/controller-manager
-  - dashboards/kubernetes/resources/pod
+  - 'tls'
+  - 'loadbalancer'
