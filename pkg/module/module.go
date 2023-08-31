@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"sigs.k8s.io/kustomize/api/loader"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 var (
@@ -19,8 +20,8 @@ type Module interface {
 	Namespace() string
 	Components() []string
 	Resolve() error
-	Save(string) error
 	Build(io.Writer) error
+	Vendor(string, filesys.FileSystem) error
 }
 
 func moduleNameFromURL(urlstring string) (string, error) {

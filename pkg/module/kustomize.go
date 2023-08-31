@@ -144,7 +144,7 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 	return err
 }
 
-func (m *KustomizeModule) Save(rootpath string) error {
+func (m *KustomizeModule) Vendor(rootpath string, fs filesys.FileSystem) error {
 	cloneURL := m.URL()
 	clonePath := m.Name()
 	cloneTag := m.Version()
@@ -167,7 +167,7 @@ func (m *KustomizeModule) Save(rootpath string) error {
 
 		// Create dir structure
 		dstName := path.Join(rootpath, rel)
-		err = os.MkdirAll(filepath.Dir(dstName), os.ModePerm)
+		err = fs.MkdirAll(filepath.Dir(dstName))
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (m *KustomizeModule) Save(rootpath string) error {
 		defer srcFile.Close()
 
 		// Create destination file which we will be writing to
-		dstFile, err := os.Create(dstName)
+		dstFile, err := fs.Create(dstName)
 		if err != nil {
 			return err
 		}
