@@ -13,8 +13,11 @@ import (
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
+	"sigs.k8s.io/kustomize/api/resource"
 	ktypes "sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
+	"sigs.k8s.io/kustomize/kyaml/resid"
+	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 var DefaultKustomizerOptions = &krusty.Options{
@@ -25,8 +28,8 @@ var DefaultKustomizerOptions = &krusty.Options{
 }
 
 type KustomizeModule struct {
-	mod    types.Module
-	resmap resmap.ResMap
+	mod types.Module
+	//resmap resmap.ResMap
 	fs     filesys.FileSystem
 	prefix string
 }
@@ -76,6 +79,73 @@ func (m *KustomizeModule) Resolve() error {
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
 	_, err = k.Run(tmpfs, m.Name())
 	return err
+}
+
+// getHostName returns a string that can be used as value in an ingress host field.
+// This function parses the modules Host struct and builds a hostname value based on the params provided.
+// Prefix & Wildcard fields on the Host struct will be prepended and appended to the string provided to this function.
+func (m *KustomizeModule) getHostName(n string) string {
+	// Don't bother if hosts isn't defined
+	if m.mod.Host == nil {
+		return ""
+	}
+
+	// Delimiter is '-' by default
+	delim := "-"
+	if len(m.mod.Host.Delimiter) > 0 {
+		delim = m.mod.Host.Delimiter
+	}
+
+	// HostName will always have highest priority because it's explicit
+	if len(m.mod.Host.HostName) > 0 {
+		return m.mod.Host.HostName
+	}
+
+	// Default to the ingress resource name
+	name := n
+
+	if len(m.mod.Host.Prefix) > 0 {
+		name = fmt.Sprintf("%s%s%s", m.mod.Host.Prefix, delim, name)
+	}
+
+	if len(m.mod.Host.Wildcard) > 0 {
+		name = fmt.Sprintf("%s%s%s", name, delim, m.mod.Host.Wildcard)
+	}
+
+	return name
+}
+
+// ApplyURLs applies all the URLs defined in this module to the provided ResMap.
+func (m *KustomizeModule) ApplyURLs(rm resmap.ResMap) error {
+
+	// Create a list of ingress resources to transform
+	ingressResources := rm.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
+		if id.Group == "networking.k8s.io" && id.Kind == "Ingress" {
+			return true
+		}
+		return false
+	})
+
+	// Loop throught the ingresses found, change the host field, and finally apply the patch
+	for i, ing := range ingressResources {
+
+		// Build the hostname we are going to use to patch the host field of the ingress resource
+		hostName := m.getHostName(ing.GetName())
+
+		_, err := ing.Pipe(
+			kyaml.LookupCreate(kyaml.MappingNode, "spec", "rules", fmt.Sprint(i)),
+			kyaml.SetField("host", kyaml.NewScalarRNode(hostName)),
+		)
+		if err != nil {
+			return nil
+		}
+		idSet := resource.MakeIdSet(ingressResources)
+		err = rm.ApplySmPatch(idSet, ing)
+		if err != nil {
+			return nil
+		}
+	}
+	return nil
 }
 
 func (m *KustomizeModule) Build(w io.Writer) error {
@@ -128,10 +198,17 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	m.resmap = res
+
+	//m.resmap = res
+
+	//fmt.Printf("\n\n%+v\n\n", ingressResources)
+	err = m.ApplyURLs(res)
+	if err != nil {
+		return err
+	}
 
 	// As Yaml output
-	yml, err := m.resmap.AsYaml()
+	yml, err := res.AsYaml()
 	if err != nil {
 		return err
 	}

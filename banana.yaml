@@ -1,7 +1,7 @@
 kind: Banana
 apiVersion: konf.io/v1alpha1
 modules:
-- name: ingress/nginx
-  components:
-  - 'tls'
-  - 'loadbalancer'
+- name: monitoring/grafana
+  namespace: my-monitoring
+  hosts:
+    wildcard: vgregion.se
