@@ -17,6 +17,9 @@ type Module struct {
 
 	// Components is a list of components for this module
 	Components []string `json:"components,omitempty" yaml:"components,omitempty"`
+
+	// Hosts is a list of Host types mapped to this module
+	Host *Host `json:"hosts,omitempty" yaml:"hosts,omitempty"`
 }
 
 type ModuleOpts map[string]interface{}
