@@ -15,8 +15,7 @@ import (
 )
 
 type Cloner struct {
-	storer storage.Storer
-	//fs        filesys.FileSystem
+	storer    storage.Storer
 	cloneURL  string
 	cloneTag  string
 	clonePath string
@@ -134,8 +133,9 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 }
 
 // NewCloner creates a new cloner using the opts provided
-func NewCloner(opts ...ClonerOpts) *Cloner {
+func NewCloner(s string, opts ...ClonerOpts) *Cloner {
 	cloner := &Cloner{
+		cloneURL:  s,
 		storer:    memory.NewStorage(),
 		clonePath: ".",
 	}

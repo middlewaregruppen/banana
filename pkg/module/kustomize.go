@@ -71,7 +71,7 @@ func (m *KustomizeModule) Components() []string {
 func (m *KustomizeModule) Resolve() error {
 	tmpfs := filesys.MakeFsInMemory()
 	cloner := git.NewCloner(
-		git.WithCloneURL(m.URL()),
+		m.URL(),
 		git.WithCloneTag(m.Version()),
 	)
 	err := cloner.Clone(tmpfs)
@@ -176,7 +176,7 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 
 	// Clone module into tmp fs
 	cloner := git.NewCloner(
-		git.WithCloneURL(m.URL()),
+		m.URL(),
 		git.WithCloneTag(m.Version()),
 		git.WithTargetPath(m.Name()),
 	)
@@ -237,7 +237,7 @@ func (m *KustomizeModule) Vendor(rootpath string, fs filesys.FileSystem) error {
 
 	tmpfs := filesys.MakeFsInMemory()
 	cloner := git.NewCloner(
-		git.WithCloneURL(cloneURL),
+		m.URL(),
 		git.WithCloneTag(cloneTag),
 		git.WithTargetPath(clonePath),
 	)
