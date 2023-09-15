@@ -28,8 +28,7 @@ var DefaultKustomizerOptions = &krusty.Options{
 }
 
 type KustomizeModule struct {
-	mod types.Module
-	//resmap resmap.ResMap
+	mod    types.Module
 	fs     filesys.FileSystem
 	prefix string
 }
@@ -71,7 +70,11 @@ func (m *KustomizeModule) Components() []string {
 
 func (m *KustomizeModule) Resolve() error {
 	tmpfs := filesys.MakeFsInMemory()
-	err := git.Clone(tmpfs, m.URL(), m.Version(), ".")
+	cloner := git.NewCloner(
+		git.WithCloneURL(m.URL()),
+		git.WithCloneTag(m.Version()),
+	)
+	err := cloner.Clone(tmpfs)
 	if err != nil {
 		return err
 	}
@@ -172,7 +175,12 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 	}
 
 	// Clone module into tmp fs
-	err = git.Clone(tmpfs, m.URL(), m.Version(), m.Name())
+	cloner := git.NewCloner(
+		git.WithCloneURL(m.URL()),
+		git.WithCloneTag(m.Version()),
+		git.WithTargetPath(m.Name()),
+	)
+	err = cloner.Clone(tmpfs)
 	if err != nil {
 		return err
 	}
@@ -228,7 +236,12 @@ func (m *KustomizeModule) Vendor(rootpath string, fs filesys.FileSystem) error {
 	logrus.Debugf("Will clone %s version %s into %s", cloneURL, cloneTag, clonePath)
 
 	tmpfs := filesys.MakeFsInMemory()
-	err := git.Clone(tmpfs, cloneURL, cloneTag, clonePath)
+	cloner := git.NewCloner(
+		git.WithCloneURL(cloneURL),
+		git.WithCloneTag(cloneTag),
+		git.WithTargetPath(clonePath),
+	)
+	err := cloner.Clone(tmpfs)
 	if err != nil {
 		return err
 	}
