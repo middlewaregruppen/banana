@@ -5,3 +5,4 @@ modules:
   namespace: my-monitoring
   hosts:
     wildcard: vgregion.se
+- name: ingress/nginx

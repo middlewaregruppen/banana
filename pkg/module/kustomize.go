@@ -3,13 +3,9 @@ package module
 import (
 	"fmt"
 	"io"
-	"os"
-	"path"
-	"path/filepath"
 
 	"github.com/middlewaregruppen/banana/api/types"
 	"github.com/middlewaregruppen/banana/pkg/git"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
@@ -227,68 +223,6 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 		return err
 	}
 	return err
-}
-
-func (m *KustomizeModule) Vendor(rootpath string, fs filesys.FileSystem) error {
-	cloneURL := m.URL()
-	clonePath := m.Name()
-	cloneTag := m.Version()
-	logrus.Debugf("Will clone %s version %s into %s", cloneURL, cloneTag, clonePath)
-
-	tmpfs := filesys.MakeFsInMemory()
-	cloner := git.NewCloner(
-		m.URL(),
-		git.WithCloneTag(cloneTag),
-		git.WithTargetPath(clonePath),
-	)
-	err := cloner.Clone(tmpfs)
-	if err != nil {
-		return err
-	}
-
-	// Walk over the tmp fs in which we have a cloned repo, attempting to
-	// copy files and folders from the tmp fs to local disk
-	return tmpfs.Walk(clonePath, func(rel string, info os.FileInfo, err error) error {
-
-		// Skip if we get a dir
-		if info.IsDir() {
-			return err
-		}
-
-		// Create dir structure
-		dstName := path.Join(rootpath, rel)
-		err = fs.MkdirAll(filepath.Dir(dstName))
-		if err != nil {
-			return err
-		}
-
-		// Stat file and check if it's a regular file
-		if !info.Mode().IsRegular() {
-			return err
-		}
-
-		// Open file for reading
-		srcFile, err := tmpfs.Open(rel)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
-
-		// Create destination file which we will be writing to
-		dstFile, err := fs.Create(dstName)
-		if err != nil {
-			return err
-		}
-		defer dstFile.Close()
-
-		// Copy content from source to destination file
-		b, err := io.Copy(dstFile, srcFile)
-		if err != nil {
-			return err
-		}
-		logrus.Debugf("Wrote %d bytes to %s", b, dstName)
-		return nil
-	})
 }
 
 func NewKustomizeModule(fs filesys.FileSystem, mod types.Module, prefix string) *KustomizeModule {

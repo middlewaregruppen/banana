@@ -1,6 +1,7 @@
 package git
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,10 +16,16 @@ import (
 )
 
 type Cloner struct {
-	storer    storage.Storer
-	cloneURL  string
-	cloneTag  string
+	// Repository storer
+	storer storage.Storer
+	// The git URL to clone
+	cloneURL string
+	// The git tag to clone
+	cloneTag string
+	// The path to which clone into
 	clonePath string
+	// The sub directory in the repo to clone
+	cloneSubdir string
 }
 
 type ClonerOpts func(c *Cloner)
@@ -51,6 +58,12 @@ func WithCloneTag(s string) ClonerOpts {
 	}
 }
 
+func WithCloneSubDir(s string) ClonerOpts {
+	return func(c *Cloner) {
+		c.cloneSubdir = s
+	}
+}
+
 // Clone performs a git clone using into targetPath.
 // If fsys is nil, an in-memory temporary filesystem will be used.
 func (c *Cloner) Clone(fsys filesys.FileSystem) error {
@@ -79,9 +92,9 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 		return err
 	}
 
-	// Walk over the given targetPath in a temporary mem fs and copy files/foldes
+	// Walk over the given targetPath in a temporary mem fs and copy files/folders
 	// to the tiven filesystem
-	err = util.Walk(fs, c.clonePath, func(rel string, info os.FileInfo, err error) error {
+	err = util.Walk(fs, c.cloneSubdir, func(rel string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return err
 		}
@@ -104,14 +117,16 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 			return err
 		}
 
+		dstRel := fmt.Sprintf("%s/%s", c.clonePath, rel)
+
 		// Create target folder structure
-		err = fsys.MkdirAll(filepath.Dir(rel))
+		err = fsys.MkdirAll(filepath.Dir(dstRel))
 		if err != nil {
 			return err
 		}
 
 		// Create dst file
-		dst, err := fsys.Create(rel)
+		dst, err := fsys.Create(dstRel)
 		if err != nil {
 			return err
 		}
@@ -135,9 +150,10 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 // NewCloner creates a new cloner using the opts provided
 func NewCloner(s string, opts ...ClonerOpts) *Cloner {
 	cloner := &Cloner{
-		cloneURL:  s,
-		storer:    memory.NewStorage(),
-		clonePath: ".",
+		cloneURL:    s,
+		storer:      memory.NewStorage(),
+		clonePath:   ".",
+		cloneSubdir: ".",
 	}
 	// Apply options
 	for _, opt := range opts {
