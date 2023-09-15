@@ -150,10 +150,10 @@ func (m *KustomizeModule) ApplyURLs(rm resmap.ResMap) error {
 func (m *KustomizeModule) Build(w io.Writer) error {
 
 	// Create a surface area for the kustomization
-	tmpfs := filesys.MakeFsInMemory()
+	//tmpfs := filesys.MakeFsInMemory()
 
 	// Create kustomization file in tmp fs
-	kf, err := tmpfs.Create("kustomization.yaml")
+	kf, err := m.fs.Create("kustomization.yaml")
 	if err != nil {
 		return err
 	}
@@ -168,17 +168,6 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 		Namespace:  m.Namespace(),
 		Resources:  []string{m.Name()},
 		Components: []string{},
-	}
-
-	// Clone module into tmp fs
-	cloner := git.NewCloner(
-		m.URL(),
-		git.WithCloneTag(m.Version()),
-		git.WithTargetPath(m.Name()),
-	)
-	err = cloner.Clone(tmpfs)
-	if err != nil {
-		return err
 	}
 
 	// Clone every component into tmp fs
@@ -198,7 +187,7 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 	}
 
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
-	res, err := k.Run(tmpfs, ".")
+	res, err := k.Run(m.fs, ".")
 	if err != nil {
 		return err
 	}
