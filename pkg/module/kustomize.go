@@ -137,17 +137,18 @@ func (m *KustomizeModule) ApplySecrets(rm resmap.ResMap) error {
 		// Loop throught the ingresses found, change the host field, and finally apply the patch
 		for _, sec := range secretResources {
 			res, err := sec.Pipe(
-				kyaml.Lookup("data"),
-				kyaml.SetField(n,kyaml.NewScalarRNode(v)),
+				kyaml.Lookup("data", n),
+				kyaml.Set(kyaml.NewScalarRNode(v)),
 			)
+			if res == nil {
+				return nil
+			}
 			if err != nil {
 				return err
 			}
-			fmt.Printf("%+v\n", res)
-			if err != nil {
-				return err
-			}
-			idSet := resource.MakeIdSet(secretResources)
+			fmt.Println(res.String())
+			fmt.Println(sec.String())
+			idSet := resource.MakeIdSet([]*resource.Resource{sec})
 			err = rm.ApplySmPatch(idSet, sec)
 			if err != nil {
 				return err
