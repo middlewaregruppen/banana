@@ -2,18 +2,67 @@ package module
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/middlewaregruppen/banana/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
+var testfs filesys.FileSystem
+
+func init() {
+	testfs = filesys.MakeFsInMemory()
+
+	// Simple Ingress
+	ing := []byte(ingressData)
+
+	err := makeSingleModule(ing)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func makeSingleModule(data []byte) error {
+	// The kustomization
+	kust := []byte(kustomizationData)
+
+	// Create module folder structure
+	rootdir := "test-namespace/test-module"
+	err := testfs.MkdirAll(rootdir)
+	if err != nil {
+		return err
+	}
+
+	// Create kustomization file in tmp fs
+	kustf, err := testfs.Create(fmt.Sprintf("%s/%s", rootdir, "kustomization.yaml"))
+	if err != nil {
+		return err
+	}
+	defer kustf.Close()
+	_, err = kustf.Write(kust)
+	if err != nil {
+		return err
+	}
+
+	// Create the resource
+	resf, err := testfs.Create(fmt.Sprintf("%s/%s", rootdir, "resource.yaml"))
+	if err != nil {
+		return err
+	}
+	defer resf.Close()
+	_, err = resf.Write(data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func newModule(mod types.Module) Module {
-	return NewKustomizeModule(filesys.MakeFsInMemory(), mod, "src")
+	return NewKustomizeModule(testfs, mod, "src")
 }
 
 func TestKustomizeModuleBuild_Ingresses(t *testing.T) {
-
 	var tests = []struct {
 		name  string
 		input types.Module
@@ -22,7 +71,7 @@ func TestKustomizeModuleBuild_Ingresses(t *testing.T) {
 		{
 			"ingress with prefix",
 			types.Module{
-				Name: "monitoring/grafana",
+				Name: "test-namespace/test-module",
 				Host: &types.Host{
 					Prefix: "infra",
 				},

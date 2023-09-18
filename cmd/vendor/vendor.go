@@ -3,9 +3,9 @@ package vendor
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/middlewaregruppen/banana/pkg/bananafile"
+	"github.com/middlewaregruppen/banana/pkg/git"
 	"github.com/middlewaregruppen/banana/pkg/module"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -53,14 +53,21 @@ func NewCmdVendor(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comm
 				logrus.Debugf("vendoring module %s holding %d component(s) \n", m.Name, len(m.Components))
 				mod := l.Load(m, prefix)
 
-				// Create module folder structure
-				srcPath := fmt.Sprintf("%s/%s", "src", mod.Name())
-				err = os.MkdirAll(srcPath, os.ModePerm)
+				// Clone the module into our fs
+				cloneURL := mod.URL()
+				cloneSubDir := mod.Name()
+				cloneTag := mod.Version()
+				dstPath := "src"
+
+				logrus.Debugf("Will clone repo %s version %s using subdir %s into %s", cloneURL, cloneTag, cloneSubDir, dstPath)
+
+				err := git.NewCloner(
+					mod.URL(),
+					git.WithCloneTag(cloneTag),
+					git.WithCloneSubDir(cloneSubDir),
+					git.WithTargetPath(dstPath),
+				).Clone(fs)
 				if err != nil {
-					return err
-				}
-				// Assemble module and components
-				if err = mod.Vendor("src", fs); err != nil {
 					return err
 				}
 			}
