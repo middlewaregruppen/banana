@@ -3,6 +3,7 @@ package module
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/middlewaregruppen/banana/api/types"
 	"github.com/middlewaregruppen/banana/pkg/git"
@@ -80,6 +81,10 @@ func (m *KustomizeModule) Resolve() error {
 	return err
 }
 
+func (m *KustomizeModule) Secrets() []string {
+	return m.mod.Secrets
+}
+
 // getHostName returns a string that can be used as value in an ingress host field.
 // This function parses the modules Host struct and builds a hostname value based on the params provided.
 // Prefix & Wildcard fields on the Host struct will be prepended and appended to the string provided to this function.
@@ -114,6 +119,44 @@ func (m *KustomizeModule) getHostName(n string) string {
 	return name
 }
 
+// ApplySecrets applies all the URLs defined in this module to the provided ResMap.
+func (m *KustomizeModule) ApplySecrets(rm resmap.ResMap) error {
+	// Create a list of ingress resources to transform
+	secretResources := rm.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
+		if id.Kind == "Secret" {
+			fmt.Printf("%+v\n", id)
+			return true
+		}
+		return false
+	})
+
+	secrets := m.Secrets()
+	for _, k := range secrets {
+		keyvalue := strings.Split(k, "=")
+		n, v := keyvalue[0], keyvalue[1]
+		// Loop throught the ingresses found, change the host field, and finally apply the patch
+		for _, sec := range secretResources {
+			res, err := sec.Pipe(
+				kyaml.Lookup("data"),
+				kyaml.SetField(n,kyaml.NewScalarRNode(v)),
+			)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("%+v\n", res)
+			if err != nil {
+				return err
+			}
+			idSet := resource.MakeIdSet(secretResources)
+			err = rm.ApplySmPatch(idSet, sec)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
 // ApplyURLs applies all the URLs defined in this module to the provided ResMap.
 func (m *KustomizeModule) ApplyURLs(rm resmap.ResMap) error {
 
@@ -193,6 +236,10 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 
 	//fmt.Printf("\n\n%+v\n\n", ingressResources)
 	err = m.ApplyURLs(res)
+	if err != nil {
+		return err
+	}
+	err = m.ApplySecrets(res)
 	if err != nil {
 		return err
 	}

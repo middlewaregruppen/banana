@@ -20,6 +20,9 @@ type Module struct {
 
 	// Hosts is a list of Host types mapped to this module
 	Host *Host `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+
+	// Secrets is a list of secrets mapped to this module
+	Secrets []string `json:"secrets,omitempty" yaml:"secrets,omitempty"`
 }
 
 type ModuleOpts map[string]interface{}

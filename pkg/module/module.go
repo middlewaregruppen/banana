@@ -19,6 +19,7 @@ type Module interface {
 	Namespace() string
 	Components() []string
 	Resolve() error
+	Secrets() []string
 	Build(io.Writer) error
 	//Vendor(string, filesys.FileSystem) error
 }
