@@ -1,8 +1,8 @@
 kind: Banana
 apiVersion: konf.io/v1alpha1
 modules:
-- name: monitoring/grafana
-  namespace: my-monitoring
-  hosts:
-    wildcard: vgregion.se
-- name: ingress/nginx
+- name: networking/infoblox
+  components:
+    - service/nodeport
+  secrets:
+    - INFOBLOX_USERNAME=admin
