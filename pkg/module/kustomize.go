@@ -149,9 +149,6 @@ func (m *KustomizeModule) ApplyURLs(rm resmap.ResMap) error {
 
 func (m *KustomizeModule) Build(w io.Writer) error {
 
-	// Create a surface area for the kustomization
-	//tmpfs := filesys.MakeFsInMemory()
-
 	// Create kustomization file in tmp fs
 	kf, err := m.fs.Create("kustomization.yaml")
 	if err != nil {
