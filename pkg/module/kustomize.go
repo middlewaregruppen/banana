@@ -3,6 +3,7 @@ package module
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/middlewaregruppen/banana/api/types"
 	"github.com/middlewaregruppen/banana/pkg/git"
@@ -80,6 +81,14 @@ func (m *KustomizeModule) Resolve() error {
 	return err
 }
 
+func (m *KustomizeModule) Secrets() []Secret {
+	var secrets []Secret
+	for _, s := range m.mod.Secrets {
+		secrets = append(secrets, getSecretFromString(s))
+	}
+	return secrets
+}
+
 // getHostName returns a string that can be used as value in an ingress host field.
 // This function parses the modules Host struct and builds a hostname value based on the params provided.
 // Prefix & Wildcard fields on the Host struct will be prepended and appended to the string provided to this function.
@@ -112,6 +121,51 @@ func (m *KustomizeModule) getHostName(n string) string {
 	}
 
 	return name
+}
+
+// Takes a secret in the form of key=value and returns they key and value as two different return values
+func getSecretFromString(s string) Secret {
+	ss := strings.Split(s, "=")
+	key, val := ss[0], ss[1]
+	// If len is greater than 2 it means the secret value contains a '='
+	// so wee need to account for that by concatinating everything after the first occurance.
+	if len(ss) > 2 {
+		val = strings.Join(ss[1:], "")
+	}
+	return Secret{Key: key, Value: val}
+}
+
+// ApplySecrets applies all secrets defined in this module to the provided ResMap.
+// Searches through the given resmap for Secret resources, updating/adding secrets on this module.
+// The Secret resource to update is determined by the secret key name itself.
+// This function only adds or updates values in the Secret resource if the key matches that of the module.
+func (m *KustomizeModule) ApplySecrets(rm resmap.ResMap) error {
+
+	// Create a list of Secret resources to transform
+	secretResources := rm.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
+		return id.Kind == "Secret"
+	})
+
+	// Range over each secret. If the key matches that of a Secret resource then replace it's value with a strategic merge patch
+	secrets := m.Secrets()
+	for _, k := range secrets {
+		for _, secRes := range secretResources {
+			_, err := secRes.Pipe(
+				kyaml.Lookup("data", k.Key),
+				kyaml.Set(kyaml.NewScalarRNode(k.Value)),
+			)
+			if err != nil {
+				return err
+			}
+			idSet := resource.MakeIdSet([]*resource.Resource{secRes})
+			err = rm.ApplySmPatch(idSet, secRes)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // ApplyURLs applies all the URLs defined in this module to the provided ResMap.
@@ -193,6 +247,10 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 
 	//fmt.Printf("\n\n%+v\n\n", ingressResources)
 	err = m.ApplyURLs(res)
+	if err != nil {
+		return err
+	}
+	err = m.ApplySecrets(res)
 	if err != nil {
 		return err
 	}
