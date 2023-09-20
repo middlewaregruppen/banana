@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/middlewaregruppen/banana/api/types"
+	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
@@ -76,7 +77,25 @@ func TestKustomizeModuleBuild_Ingresses(t *testing.T) {
 					Prefix: "infra",
 				},
 			},
-			"asd",
+			`apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-ingress
+  namespace: test-namespace
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: infra-test-ingress
+    http:
+      paths:
+      - backend:
+          service:
+            name: test-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+`,
 		},
 	}
 
@@ -88,7 +107,7 @@ func TestKustomizeModuleBuild_Ingresses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if buf.String() != tt.want {
+			if assert.Equal(t, tt.want, buf.String()) {
 				t.Fatalf("got %s but wanted %s", buf.String(), tt.want)
 			}
 		})

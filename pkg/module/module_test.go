@@ -1,14 +1,11 @@
 package module
 
-var kustomizationData = `
-apiVersion: kustomize.config.k8s.io/v1beta1
+var kustomizationData = `apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-- resource.yaml
-`
+- resource.yaml`
 
-var ingressData = `
-apiVersion: networking.k8s.io/v1
+var ingressData = `apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: test-ingress
