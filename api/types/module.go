@@ -6,8 +6,11 @@ type Module struct {
 	// Name is the name of this module
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
-	// Version is the version of this module
+	// Version is the version of this module, typically translates to a git tag
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+
+	// Ref is the git reference name of this module
+	Ref string `json:"ref,omitempty" yaml:"ref,omitempty"`
 
 	// Namespace is the namespace for this module
 	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`

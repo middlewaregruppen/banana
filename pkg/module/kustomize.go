@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/middlewaregruppen/banana/api/types"
-	"github.com/middlewaregruppen/banana/pkg/git"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
@@ -49,6 +48,10 @@ func (m *KustomizeModule) Version() string {
 	return v
 }
 
+func (m *KustomizeModule) Ref() string {
+	return m.mod.Ref
+}
+
 func (m *KustomizeModule) URL() string {
 	u := m.prefix
 	if IsRemote(m.mod.Name) {
@@ -66,18 +69,8 @@ func (m *KustomizeModule) Components() []string {
 }
 
 func (m *KustomizeModule) Resolve() error {
-	tmpfs := filesys.MakeFsInMemory()
-	cloner := git.NewCloner(
-		m.URL(),
-		git.WithCloneTag(m.Version()),
-	)
-	err := cloner.Clone(tmpfs)
-	if err != nil {
-		return err
-	}
-
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
-	_, err = k.Run(tmpfs, m.Name())
+	_, err := k.Run(m.fs, m.Name())
 	return err
 }
 
@@ -269,6 +262,9 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 	return err
 }
 
+// NewKustomizeModule creates a new Kustomize implemented Module. It expects a filesystem, module type and a prefix.
+// The prefix argument is a string that will prefix this module's name. This is so that the name module can be mapped to a Git repository,
+// without having to reference the module by it's entire URL.
 func NewKustomizeModule(fs filesys.FileSystem, mod types.Module, prefix string) *KustomizeModule {
 	return &KustomizeModule{
 		fs:     fs,
