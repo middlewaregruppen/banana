@@ -94,8 +94,7 @@ spec:
             port:
               number: 80
         path: /
-        pathType: Prefix
-`,
+        pathType: Prefix`,
 		},
 	}
 
@@ -107,9 +106,10 @@ spec:
 			if err != nil {
 				t.Fatal(err)
 			}
-			if assert.Equal(t, tt.want, buf.String()) {
-				t.Fatalf("got %s but wanted %s", buf.String(), tt.want)
-			}
+			assert.YAMLEq(t, tt.want, buf.String())
+			// if !assert.YAMLEq(t, tt.want, buf.String()) {
+			// 	t.Fatalf("got\n%s\nbut wanted\n%s", buf.String(), tt.want)
+			// }
 		})
 	}
 

@@ -13,14 +13,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: test-host.domain.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: test-service
-                port:
-                  number: 80
-`
+  - host: infra-test-ingress
+    http:
+      paths:
+      - backend:
+          service:
+            name: test-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix`
