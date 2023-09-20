@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/middlewaregruppen/banana/api/types"
-	"github.com/middlewaregruppen/banana/pkg/git"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
 	"sigs.k8s.io/kustomize/api/resmap"
@@ -49,6 +48,10 @@ func (m *KustomizeModule) Version() string {
 	return v
 }
 
+func (m *KustomizeModule) Ref() string {
+	return m.mod.Ref
+}
+
 func (m *KustomizeModule) URL() string {
 	u := m.prefix
 	if IsRemote(m.mod.Name) {
@@ -66,18 +69,8 @@ func (m *KustomizeModule) Components() []string {
 }
 
 func (m *KustomizeModule) Resolve() error {
-	tmpfs := filesys.MakeFsInMemory()
-	cloner := git.NewCloner(
-		m.URL(),
-		git.WithCloneTag(m.Version()),
-	)
-	err := cloner.Clone(tmpfs)
-	if err != nil {
-		return err
-	}
-
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
-	_, err = k.Run(tmpfs, m.Name())
+	_, err := k.Run(m.fs, m.Name())
 	return err
 }
 

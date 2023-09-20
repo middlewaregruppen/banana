@@ -8,12 +8,9 @@ import (
 	"sigs.k8s.io/kustomize/api/loader"
 )
 
-var (
-	TemplateSuffix = ".tmpl"
-)
-
 type Module interface {
 	Version() string
+	Ref() string
 	Name() string
 	URL() string
 	Namespace() string
@@ -21,7 +18,6 @@ type Module interface {
 	Resolve() error
 	Secrets() []Secret
 	Build(io.Writer) error
-	//Vendor(string, filesys.FileSystem) error
 }
 
 func moduleNameFromURL(urlstring string) (string, error) {

@@ -46,20 +46,10 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 			for _, m := range km.Modules {
 				logrus.Debugf("building module %s holding %d component(s) \n", m.Name, len(m.Components))
 				mod := l.Load(m, prefix)
-
-				// Clone the module into our fs
-				cloneURL := mod.URL()
-				cloneSubDir := mod.Name()
-				cloneTag := mod.Version()
-
-				logrus.Debugf("Will clone repo %s version %s using subdir %s into", cloneURL, cloneTag, cloneSubDir)
+				logrus.Debugf("Will clone repo %s version %s using subdir %s into", mod.URL(), mod.Version(), mod.Name())
 
 				// Setup the cloner and clone into temporary filesystem
-				err := git.NewCloner(
-					mod.URL(),
-					git.WithCloneTag(cloneTag),
-					git.WithCloneSubDir(cloneSubDir),
-				).Clone(tmpfs)
+				err := git.NewCloner(mod).Clone(tmpfs)
 				if err != nil {
 					return err
 				}

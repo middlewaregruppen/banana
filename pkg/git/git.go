@@ -12,18 +12,23 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/middlewaregruppen/banana/pkg/module"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 type Cloner struct {
 	// Repository storer
 	storer storage.Storer
+
 	// The git URL to clone
 	cloneURL string
-	// The git tag to clone
-	cloneTag string
+
+	// The git ref to clone
+	cloneRef plumbing.ReferenceName
+
 	// The path to which clone into
 	clonePath string
+
 	// The sub directory in the repo to clone
 	cloneSubdir string
 }
@@ -44,19 +49,19 @@ func WithTargetPath(s string) ClonerOpts {
 	}
 }
 
-// WithCloneURL returns a ClonerOpts with the provided clone url
-func WithCloneURL(s string) ClonerOpts {
-	return func(c *Cloner) {
-		c.cloneURL = s
-	}
-}
+// // WithCloneURL returns a ClonerOpts with the provided clone url
+// func WithCloneURL(s string) ClonerOpts {
+// 	return func(c *Cloner) {
+// 		c.cloneURL = s
+// 	}
+// }
 
-// WithCloneTag returns a ClonerOpts with the provided clone tag
-func WithCloneTag(s string) ClonerOpts {
-	return func(c *Cloner) {
-		c.cloneTag = s
-	}
-}
+// // WithCloneRef returns a ClonerOpts with the provided clone ref
+// func WithCloneRef(s string) ClonerOpts {
+// 	return func(c *Cloner) {
+// 		c.cloneRef = s
+// 	}
+// }
 
 func WithCloneSubDir(s string) ClonerOpts {
 	return func(c *Cloner) {
@@ -68,12 +73,6 @@ func WithCloneSubDir(s string) ClonerOpts {
 // If fsys is nil, an in-memory temporary filesystem will be used.
 func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 
-	// Use HEAD if tag is not provided
-	ref := plumbing.HEAD
-	if len(c.cloneTag) > 0 {
-		ref = plumbing.NewTagReferenceName(c.cloneTag)
-	}
-
 	// Setup storage for go-git
 	fs := memfs.New()
 	if c.storer == nil {
@@ -83,7 +82,7 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 	// Clone
 	_, err := git.Clone(c.storer, fs, &git.CloneOptions{
 		URL:           c.cloneURL,
-		ReferenceName: ref,
+		ReferenceName: c.cloneRef,
 		//SingleBranch: true, 	// SingleBranch: true doesn't work together with ReferenceName when remote repo uses main instead of master as branch name
 		Depth: 1,
 	})
@@ -147,10 +146,17 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 	return nil
 }
 
-// NewCloner creates a new cloner using the opts provided
-func NewCloner(s string, opts ...ClonerOpts) *Cloner {
+func NewCloner(mod module.Module, opts ...ClonerOpts) *Cloner {
+	cloneRef := plumbing.HEAD
+	if len(mod.Version()) > 0 {
+		cloneRef = plumbing.NewTagReferenceName(mod.Version())
+	}
+	if len(mod.Ref()) > 0 {
+		cloneRef = plumbing.ReferenceName(mod.Ref())
+	}
 	cloner := &Cloner{
-		cloneURL:    s,
+		cloneURL:    mod.URL(),
+		cloneRef:    cloneRef,
 		storer:      memory.NewStorage(),
 		clonePath:   ".",
 		cloneSubdir: ".",

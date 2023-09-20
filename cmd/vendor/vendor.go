@@ -52,19 +52,10 @@ func NewCmdVendor(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comm
 			for _, m := range km.Modules {
 				logrus.Debugf("vendoring module %s holding %d component(s) \n", m.Name, len(m.Components))
 				mod := l.Load(m, prefix)
-
-				// Clone the module into our fs
-				cloneURL := mod.URL()
-				cloneSubDir := mod.Name()
-				cloneTag := mod.Version()
 				dstPath := "src"
-
-				logrus.Debugf("Will clone repo %s version %s using subdir %s into %s", cloneURL, cloneTag, cloneSubDir, dstPath)
-
-				err := git.NewCloner(
-					mod.URL(),
-					git.WithCloneTag(cloneTag),
-					git.WithCloneSubDir(cloneSubDir),
+				logrus.Debugf("Will clone repo %s version %s using subdir %s into %s", mod.URL(), mod.Version(), mod.Name(), dstPath)
+				err := git.NewCloner(mod,
+					git.WithCloneSubDir(mod.Name()),
 					git.WithTargetPath(dstPath),
 				).Clone(fs)
 				if err != nil {

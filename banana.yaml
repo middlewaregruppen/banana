@@ -1,13 +1,14 @@
 kind: Banana
 apiVersion: konf.io/v1alpha1
 modules:
-- name: monitoring/grafana
-  version: v1.0.0
-- name: ingress/nginx
-  components:
-  - tls
-  - loadbalancer
+# - name: monitoring/grafana
+#   version: v1.0.0
+# - name: ingress/nginx
+#   components:
+#   - tls
+#   - loadbalancer
 - name: networking/infoblox
+  version: v1.0.0
   components:
   - service/nodeport
   secrets:
