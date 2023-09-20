@@ -146,6 +146,10 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 	return nil
 }
 
+func (c *Cloner) GetRef() plumbing.ReferenceName {
+	return c.cloneRef
+}
+
 func NewCloner(mod module.Module, opts ...ClonerOpts) *Cloner {
 	cloneRef := plumbing.HEAD
 	if len(mod.Version()) > 0 {
