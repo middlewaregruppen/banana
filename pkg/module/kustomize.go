@@ -4,7 +4,13 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
+	"github.com/getsops/sops/v3"
+	"github.com/getsops/sops/v3/aes"
+	"github.com/getsops/sops/v3/age"
+	"github.com/getsops/sops/v3/keys"
+	syaml "github.com/getsops/sops/v3/stores/yaml"
 	"github.com/middlewaregruppen/banana/api/types"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
@@ -254,8 +260,59 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 		return err
 	}
 
+	outputStore := &syaml.Store{}
+	inputStore := &syaml.Store{}
+	cipher := aes.NewCipher()
+
+	branches, err := inputStore.LoadPlainFile(yml)
+	if err != nil {
+		return err
+	}
+
+	var ageMasterKeys []keys.MasterKey
+	ageKeys, err := age.MasterKeysFromRecipients("age1geawfzgrvdv5v8kd28wq8a34vvqg3zcztx76h9du95d5m62s0qhsgkrqlg")
+	if err != nil {
+		return err
+	}
+	for _, k := range ageKeys {
+		ageMasterKeys = append(ageMasterKeys, k)
+	}
+	var groups sops.KeyGroup
+	groups = append(groups, ageMasterKeys...)
+
+	tree := sops.Tree{
+		Branches: branches,
+		Metadata: sops.Metadata{
+			KeyGroups: []sops.KeyGroup{groups},
+			Version:   "v1.0.0",
+		},
+	}
+
+	dataKey, errs := tree.GenerateDataKey()
+	if len(errs) > 0 {
+		err = fmt.Errorf("could not generate data key: %s", errs)
+		return err
+	}
+
+	unencryptedMac, err := tree.Encrypt(dataKey, cipher)
+	if err != nil {
+		return err
+	}
+	tree.Metadata.LastModified = time.Now().UTC()
+
+	tree.Metadata.MessageAuthenticationCode, err = cipher.Encrypt(unencryptedMac, dataKey, tree.Metadata.LastModified.Format(time.RFC3339))
+	if err != nil {
+		return err
+	}
+
+	encryptedFile, err := outputStore.EmitEncryptedFile(tree)
+	if err != nil {
+		return err
+	}
+	// Encrypt secrets
+
 	// Write to writer
-	_, err = w.Write(yml)
+	_, err = w.Write(encryptedFile)
 	if err != nil {
 		return err
 	}

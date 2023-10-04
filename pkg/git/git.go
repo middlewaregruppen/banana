@@ -151,6 +151,7 @@ func (c *Cloner) GetRef() plumbing.ReferenceName {
 }
 
 func NewCloner(mod module.Module, opts ...ClonerOpts) *Cloner {
+
 	cloneRef := plumbing.HEAD
 	if len(mod.Version()) > 0 {
 		cloneRef = plumbing.NewTagReferenceName(mod.Version())
