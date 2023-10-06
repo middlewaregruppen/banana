@@ -200,7 +200,7 @@ func (m *KustomizeModule) ApplyURLs(rm resmap.ResMap) error {
 	return nil
 }
 
-func (m *KustomizeModule) Build(w io.Writer) error {
+func (m *KustomizeModule) Build(opts BuildOpts, w io.Writer) error {
 
 	// Create kustomization file in tmp fs
 	kf, err := m.fs.Create("kustomization.yaml")
@@ -260,19 +260,36 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 		return err
 	}
 
+	// Encrypt secrets
+	if len(opts.AgeRecipients) > 0 {
+		yml, err = m.BuildEncrypted(yml, opts.AgeRecipients)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Write to writer
+	_, err = w.Write(yml)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func (m *KustomizeModule) BuildEncrypted(data []byte, recipients []string) ([]byte, error) {
 	outputStore := &syaml.Store{}
 	inputStore := &syaml.Store{}
 	cipher := aes.NewCipher()
 
-	branches, err := inputStore.LoadPlainFile(yml)
+	branches, err := inputStore.LoadPlainFile(data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var ageMasterKeys []keys.MasterKey
-	ageKeys, err := age.MasterKeysFromRecipients("age1geawfzgrvdv5v8kd28wq8a34vvqg3zcztx76h9du95d5m62s0qhsgkrqlg")
+	ageKeys, err := age.MasterKeysFromRecipients(strings.Join(recipients, ","))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, k := range ageKeys {
 		ageMasterKeys = append(ageMasterKeys, k)
@@ -291,32 +308,21 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 	dataKey, errs := tree.GenerateDataKey()
 	if len(errs) > 0 {
 		err = fmt.Errorf("could not generate data key: %s", errs)
-		return err
+		return nil, err
 	}
 
 	unencryptedMac, err := tree.Encrypt(dataKey, cipher)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tree.Metadata.LastModified = time.Now().UTC()
 
 	tree.Metadata.MessageAuthenticationCode, err = cipher.Encrypt(unencryptedMac, dataKey, tree.Metadata.LastModified.Format(time.RFC3339))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	encryptedFile, err := outputStore.EmitEncryptedFile(tree)
-	if err != nil {
-		return err
-	}
-	// Encrypt secrets
-
-	// Write to writer
-	_, err = w.Write(encryptedFile)
-	if err != nil {
-		return err
-	}
-	return err
+	return outputStore.EmitEncryptedFile(tree)
 }
 
 // NewKustomizeModule creates a new Kustomize implemented Module. It expects a filesystem, module type and a prefix.

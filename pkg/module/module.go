@@ -17,7 +17,11 @@ type Module interface {
 	Components() []string
 	Resolve() error
 	Secrets() []Secret
-	Build(io.Writer) error
+	Build(BuildOpts, io.Writer) error
+}
+
+type BuildOpts struct {
+	AgeRecipients []string
 }
 
 func moduleNameFromURL(urlstring string) (string, error) {

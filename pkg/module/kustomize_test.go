@@ -102,7 +102,7 @@ spec:
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			m := newModule(tt.input)
-			err := m.Build(&buf)
+			err := m.Build(BuildOpts{}, &buf)
 			if err != nil {
 				t.Fatal(err)
 			}
