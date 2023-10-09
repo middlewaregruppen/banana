@@ -104,15 +104,14 @@ func encrypt(data []byte, recipients, keysToEncrypt []string) ([]byte, error) {
 	var groups sops.KeyGroup
 	groups = append(groups, ageMasterKeys...)
 
-	//ncryptedRegex := strings.Join(keysToEncrypt, "|")
+	encryptedRegex := strings.Join(keysToEncrypt, "|")
 
 	tree := sops.Tree{
 		Branches: branches,
 		Metadata: sops.Metadata{
-			KeyGroups: []sops.KeyGroup{groups},
-			Version:   "v1.0.0",
-			//UnencryptedRegex: "^(apiVersion|metadata|kind|type)$",
-			//EncryptedRegex:   fmt.Sprintf("^(%s)", encryptedRegex),
+			KeyGroups:      []sops.KeyGroup{groups},
+			Version:        "v1.0.0",
+			EncryptedRegex: fmt.Sprintf("^(%s)", encryptedRegex),
 		},
 	}
 
