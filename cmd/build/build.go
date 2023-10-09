@@ -56,8 +56,25 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 					return err
 				}
 
-				// Build the module
-				if err = mod.Build(module.BuildOpts{AgeRecipients: age}, os.Stdout); err != nil {
+				// Bundle the module
+				bun, err := mod.Bundle(
+					module.WithSecrets(mod.Secrets()),
+					module.WithURLs(mod.Host()),
+				)
+				if err != nil {
+					return err
+				}
+
+				// Build encrypted & flattened module to stdout
+				if len(age) > 0 {
+					if err = bun.FlattenSecure(age, os.Stdout); err != nil {
+						return err
+					}
+					return nil
+				}
+
+				// Build flattened module to stdout
+				if err = bun.Flatten(os.Stdout); err != nil {
 					return err
 				}
 			}

@@ -73,7 +73,7 @@ func TestKustomizeModuleBuild_Ingresses(t *testing.T) {
 			"ingress with prefix",
 			types.Module{
 				Name: "test-namespace/test-module",
-				Host: &types.Host{
+				Hosts: &types.Host{
 					Prefix: "infra",
 				},
 			},
@@ -102,7 +102,7 @@ spec:
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			m := newModule(tt.input)
-			err := m.Build(BuildOpts{}, &buf)
+			err := m.Build(&buf)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -14,12 +14,8 @@ import (
 	"github.com/middlewaregruppen/banana/api/types"
 	"gopkg.in/yaml.v3"
 	"sigs.k8s.io/kustomize/api/krusty"
-	"sigs.k8s.io/kustomize/api/resmap"
-	"sigs.k8s.io/kustomize/api/resource"
 	ktypes "sigs.k8s.io/kustomize/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
-	"sigs.k8s.io/kustomize/kyaml/resid"
-	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 var DefaultKustomizerOptions = &krusty.Options{
@@ -33,6 +29,7 @@ type KustomizeModule struct {
 	mod    types.Module
 	fs     filesys.FileSystem
 	prefix string
+	//resmap resmap.ResMap
 }
 
 // Name returns a human readable version of this module.
@@ -91,32 +88,34 @@ func (m *KustomizeModule) Secrets() []Secret {
 // getHostName returns a string that can be used as value in an ingress host field.
 // This function parses the modules Host struct and builds a hostname value based on the params provided.
 // Prefix & Wildcard fields on the Host struct will be prepended and appended to the string provided to this function.
-func (m *KustomizeModule) getHostName(n string) string {
+func (m *KustomizeModule) Host() string {
 	// Don't bother if hosts isn't defined
-	if m.mod.Host == nil {
+	if m.mod.Hosts == nil {
 		return ""
 	}
 
 	// Delimiter is '-' by default
 	delim := "-"
-	if len(m.mod.Host.Delimiter) > 0 {
-		delim = m.mod.Host.Delimiter
+	if len(m.mod.Hosts.Delimiter) > 0 {
+		delim = m.mod.Hosts.Delimiter
 	}
 
 	// HostName will always have highest priority because it's explicit
-	if len(m.mod.Host.HostName) > 0 {
-		return m.mod.Host.HostName
+	if len(m.mod.Hosts.HostName) > 0 {
+		return m.mod.Hosts.HostName
 	}
 
 	// Default to the ingress resource name
-	name := n
+	names := strings.Split(m.Name(), "/")
+	name := names[len(names)-1]
 
-	if len(m.mod.Host.Prefix) > 0 {
-		name = fmt.Sprintf("%s%s%s", m.mod.Host.Prefix, delim, name)
+	if len(m.mod.Hosts.Prefix) > 0 {
+		name = fmt.Sprintf("%s%s%s", m.mod.Hosts.Prefix, delim, name)
 	}
 
-	if len(m.mod.Host.Wildcard) > 0 {
-		name = fmt.Sprintf("%s%s%s", name, delim, m.mod.Host.Wildcard)
+	if len(m.mod.Hosts.Wildcard) > 0 {
+		delim = "."
+		name = fmt.Sprintf("%s%s%s", name, delim, m.mod.Hosts.Wildcard)
 	}
 
 	return name
@@ -138,74 +137,96 @@ func getSecretFromString(s string) Secret {
 // Searches through the given resmap for Secret resources, updating/adding secrets on this module.
 // The Secret resource to update is determined by the secret key name itself.
 // This function only adds or updates values in the Secret resource if the key matches that of the module.
-func (m *KustomizeModule) ApplySecrets(rm resmap.ResMap) error {
+// func (m *KustomizeModule) ApplySecrets(rm resmap.ResMap) error {
 
-	// Create a list of Secret resources to transform
-	secretResources := rm.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
-		return id.Kind == "Secret"
-	})
+// 	// Create a list of Secret resources to transform
+// 	secretResources := rm.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
+// 		return id.Kind == "Secret"
+// 	})
 
-	// Range over each secret. If the key matches that of a Secret resource then replace it's value with a strategic merge patch
-	secrets := m.Secrets()
-	for _, k := range secrets {
-		for _, secRes := range secretResources {
-			_, err := secRes.Pipe(
-				kyaml.Lookup("data", k.Key),
-				kyaml.Set(kyaml.NewScalarRNode(k.Value)),
-			)
-			if err != nil {
-				return err
-			}
-			idSet := resource.MakeIdSet([]*resource.Resource{secRes})
-			err = rm.ApplySmPatch(idSet, secRes)
-			if err != nil {
-				return err
-			}
-		}
-	}
+// 	// Range over each secret. If the key matches that of a Secret resource then replace it's value with a strategic merge patch
+// 	secrets := m.Secrets()
+// 	for _, k := range secrets {
+// 		for _, secRes := range secretResources {
+// 			_, err := secRes.Pipe(
+// 				kyaml.Lookup("data", k.Key),
+// 				kyaml.Set(kyaml.NewScalarRNode(k.Value)),
+// 			)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			idSet := resource.MakeIdSet([]*resource.Resource{secRes})
+// 			err = rm.ApplySmPatch(idSet, secRes)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // ApplyURLs applies all the URLs defined in this module to the provided ResMap.
-func (m *KustomizeModule) ApplyURLs(rm resmap.ResMap) error {
+// func (m *KustomizeModule) ApplyURLs(rm resmap.ResMap) error {
 
-	// Create a list of ingress resources to transform
-	ingressResources := rm.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
-		if id.Group == "networking.k8s.io" && id.Kind == "Ingress" {
-			return true
-		}
-		return false
-	})
+// 	// Create a list of ingress resources to transform
+// 	ingressResources := rm.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
+// 		if id.Group == "networking.k8s.io" && id.Kind == "Ingress" {
+// 			return true
+// 		}
+// 		return false
+// 	})
 
-	// Loop throught the ingresses found, change the host field, and finally apply the patch
-	for i, ing := range ingressResources {
+// 	// Loop throught the ingresses found, change the host field, and finally apply the patch
+// 	for i, ing := range ingressResources {
 
-		// Build the hostname we are going to use to patch the host field of the ingress resource
-		hostName := m.getHostName(ing.GetName())
+// 		// Build the hostname we are going to use to patch the host field of the ingress resource
+// 		hostName := m.getHostName(ing.GetName())
 
-		_, err := ing.Pipe(
-			kyaml.LookupCreate(kyaml.MappingNode, "spec", "rules", fmt.Sprint(i)),
-			kyaml.SetField("host", kyaml.NewScalarRNode(hostName)),
-		)
-		if err != nil {
-			return nil
-		}
-		idSet := resource.MakeIdSet(ingressResources)
-		err = rm.ApplySmPatch(idSet, ing)
-		if err != nil {
-			return nil
-		}
-	}
+// 		_, err := ing.Pipe(
+// 			kyaml.LookupCreate(kyaml.MappingNode, "spec", "rules", fmt.Sprint(i)),
+// 			kyaml.SetField("host", kyaml.NewScalarRNode(hostName)),
+// 		)
+// 		if err != nil {
+// 			return nil
+// 		}
+// 		idSet := resource.MakeIdSet(ingressResources)
+// 		err = rm.ApplySmPatch(idSet, ing)
+// 		if err != nil {
+// 			return nil
+// 		}
+// 	}
+// 	return nil
+// }
+
+// func (m *KustomizeModule) Bundle(opts BuildOpts) (Bundle, error) {
+// 	var factory = provider.NewDefaultDepProvider().GetResourceFactory()
+
+// 	// Encrypt secrets
+// 	if len(opts.AgeRecipients) > 0 {
+// 		yml, err := secRes.AsYAML()
+// 		if err != nil {
+// 			return err
+// 		}
+// 		eyml, err := m.BuildEncrypted(yml, opts.AgeRecipients)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+
+// 	secRes.AsYAML()
+// }
+
+func (m *KustomizeModule) Build(w io.Writer) error {
 	return nil
 }
 
-func (m *KustomizeModule) Build(opts BuildOpts, w io.Writer) error {
+func (m *KustomizeModule) Bundle(opts ...BundleOpts) (*Bundle, error) {
 
 	// Create kustomization file in tmp fs
 	kf, err := m.fs.Create("kustomization.yaml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer kf.Close()
 
@@ -228,52 +249,50 @@ func (m *KustomizeModule) Build(opts BuildOpts, w io.Writer) error {
 
 	b, err := yaml.Marshal(&content)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = kf.Write(b)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
-	res, err := k.Run(m.fs, ".")
+	rm, err := k.Run(m.fs, ".")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	//m.resmap = res
+	// err = m.ApplyURLs(m.resmap)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = m.ApplySecrets(m.resmap)
+	// if err != nil {
+	// 	return err
+	// }
 
-	//fmt.Printf("\n\n%+v\n\n", ingressResources)
-	err = m.ApplyURLs(res)
-	if err != nil {
-		return err
-	}
-	err = m.ApplySecrets(res)
-	if err != nil {
-		return err
-	}
+	// // As Yaml output
+	// m.resmap, err = res.AsYaml()
+	// if err != nil {
+	// 	return err
+	// }
 
-	// As Yaml output
-	yml, err := res.AsYaml()
-	if err != nil {
-		return err
-	}
-
-	// Encrypt secrets
-	if len(opts.AgeRecipients) > 0 {
-		yml, err = m.BuildEncrypted(yml, opts.AgeRecipients)
-		if err != nil {
-			return err
-		}
-	}
+	// // Encrypt secrets
+	// if len(opts.AgeRecipients) > 0 {
+	// 	yml, err = m.BuildEncrypted(yml, opts.AgeRecipients)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	// Write to writer
-	_, err = w.Write(yml)
-	if err != nil {
-		return err
-	}
-	return err
+	// _, err = w.Write(yml)
+	// if err != nil {
+	// 	return err
+	// }
+
+	return &Bundle{mod: m, ResMap: rm, opts: opts}, nil
 }
 
 func (m *KustomizeModule) BuildEncrypted(data []byte, recipients []string) ([]byte, error) {
