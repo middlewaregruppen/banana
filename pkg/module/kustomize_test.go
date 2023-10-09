@@ -85,7 +85,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: infra-test-ingress
+  - host: infra-test-module
     http:
       paths:
       - backend:
@@ -102,7 +102,11 @@ spec:
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			m := newModule(tt.input)
-			err := m.Build(&buf)
+			b, err := m.Bundle(WithURLs(m.Host()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = b.Flatten(&buf)
 			if err != nil {
 				t.Fatal(err)
 			}
