@@ -17,7 +17,15 @@ type Module interface {
 	Components() []string
 	Resolve() error
 	Secrets() []Secret
+	Host() string
 	Build(io.Writer) error
+	Bundle(...BundleOpts) (*Bundle, error)
+}
+
+type GroupVersionKind struct {
+	Group   string
+	Version string
+	Kind    string
 }
 
 func moduleNameFromURL(urlstring string) (string, error) {

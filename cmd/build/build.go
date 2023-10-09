@@ -19,12 +19,14 @@ import (
 var (
 	fileName string
 	output   string
+	age      []string
 )
 
 func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Command {
 	c := &cobra.Command{
 		Use: "build",
 		//Aliases: []string{""},
+		Args:  cobra.ExactArgs(0),
 		Short: "Builds sources from bnanana specification",
 		Long:  "",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -54,8 +56,25 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 					return err
 				}
 
-				// Build the module
-				if err = mod.Build(os.Stdout); err != nil {
+				// Bundle the module
+				bun, err := mod.Bundle(
+					module.WithSecrets(mod.Secrets()),
+					module.WithURLs(mod.Host()),
+				)
+				if err != nil {
+					return err
+				}
+
+				// Build encrypted & flattened module to stdout
+				if len(age) > 0 {
+					if err = bun.FlattenSecure(age, os.Stdout); err != nil {
+						return err
+					}
+					return nil
+				}
+
+				// Build flattened module to stdout
+				if err = bun.Flatten(os.Stdout); err != nil {
 					return err
 				}
 			}
@@ -74,6 +93,12 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 		"o",
 		"stdout",
 		"build banana specifiction to either stdout or filesystem",
+	)
+	c.Flags().StringArrayVar(
+		&age,
+		"age",
+		[]string{},
+		"comma separated list of age recipients [$SOPS_AGE_RECIPIENTS]",
 	)
 	return c
 }
