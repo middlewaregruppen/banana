@@ -71,6 +71,14 @@ func (b *Bundle) FlattenSecure(recipients []string, w io.Writer) error {
 		return err
 	}
 
+	// Skip encryption if no secrets exist in module
+	if len(b.mod.Secrets()) <= 0 {
+		if _, err := w.Write(buf.Bytes()); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	var keysToEncrypt []string
 	for _, sec := range b.mod.Secrets() {
 		keysToEncrypt = append(keysToEncrypt, sec.Key)
