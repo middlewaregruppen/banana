@@ -128,7 +128,7 @@ func getSecretFromString(s string) Secret {
 	// If len is greater than 2 it means the secret value contains a '='
 	// so wee need to account for that by concatinating everything after the first occurance.
 	if len(ss) > 2 {
-		val = strings.Join(ss[1:], "")
+		val = s[len(key)+1:]
 	}
 	return Secret{Key: key, Value: val}
 }
