@@ -15,4 +15,7 @@ type BananaFile struct {
 
 	// Modules is a list of modules applied to this konfig
 	Modules []Module `json:"modules,omitempty" yaml:"modules,omitempty"`
+
+	// Age controls age-specific attributes
+	Age *Age `json:"age,omitempty" yaml:"age,omitempty"`
 }

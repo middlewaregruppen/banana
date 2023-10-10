@@ -19,7 +19,7 @@ import (
 var (
 	fileName string
 	output   string
-	age      []string
+	//age      []string
 )
 
 func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Command {
@@ -66,8 +66,8 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 				}
 
 				// Build encrypted & flattened module to stdout
-				if len(age) > 0 {
-					if err = bun.FlattenSecure(age, os.Stdout); err != nil {
+				if km.Age != nil && len(km.Age.Recipients) > 0 {
+					if err = bun.FlattenSecure(km.Age.Recipients, os.Stdout); err != nil {
 						return err
 					}
 					return nil
@@ -93,12 +93,6 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 		"o",
 		"stdout",
 		"build banana specifiction to either stdout or filesystem",
-	)
-	c.Flags().StringArrayVar(
-		&age,
-		"age",
-		[]string{},
-		"comma separated list of age recipients [$SOPS_AGE_RECIPIENTS]",
 	)
 	return c
 }
