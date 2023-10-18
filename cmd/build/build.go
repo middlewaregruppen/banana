@@ -40,8 +40,7 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 			}
 
 			// Init loader for loading modules
-			tmpfs := filesys.MakeFsInMemory()
-			l := module.NewLoader(tmpfs)
+			l := module.NewLoader(fs)
 
 			// Range over each module, loading them through the loader and building them
 			// to the provided writer
@@ -51,7 +50,8 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 				logrus.Debugf("Will clone repo %s version %s using subdir %s into", mod.URL(), mod.Version(), mod.Name())
 
 				// Setup the cloner and clone into temporary filesystem
-				err := git.NewCloner(mod).Clone(tmpfs)
+				opts := git.WithTargetPath(l.TmpFolder.String())
+				err := git.NewCloner(mod, opts).Clone(fs)
 				if err != nil {
 					return err
 				}

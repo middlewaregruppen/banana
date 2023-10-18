@@ -1,12 +1,15 @@
 package module
 
 import (
+	"log"
+
 	"github.com/middlewaregruppen/banana/api/types"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 
 type Loader struct {
 	fsys filesys.FileSystem
+	TmpFolder filesys.ConfirmedDir
 	mods []Module
 }
 
@@ -14,7 +17,7 @@ type Loader struct {
 func (l *Loader) Load(mod types.Module, prefix string) Module {
 
 	// Try with Kustomize
-	m := NewKustomizeModule(l.fsys, mod, prefix)
+	m := NewKustomizeModule(l.fsys, mod, prefix, l.TmpFolder)
 	l.mods = append(l.mods, m)
 	return m
 	// err = m.Resolve()
@@ -34,7 +37,13 @@ func (l *Loader) Load(mod types.Module, prefix string) Module {
 }
 
 func NewLoader(fsys filesys.FileSystem) *Loader {
+	tmpfs, err := filesys.NewTmpConfirmedDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &Loader{
 		fsys: fsys,
+		TmpFolder: tmpfs,
 	}
 }

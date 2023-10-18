@@ -116,7 +116,7 @@ func (c *Cloner) Clone(fsys filesys.FileSystem) error {
 			return err
 		}
 
-		dstRel := fmt.Sprintf("%s/%s", c.clonePath, rel)
+		dstRel := fmt.Sprintf("/%s/%s", c.clonePath, rel)
 
 		// Create target folder structure
 		err = fsys.MkdirAll(filepath.Dir(dstRel))
@@ -152,7 +152,7 @@ func (c *Cloner) GetRef() plumbing.ReferenceName {
 
 func NewCloner(mod module.Module, opts ...ClonerOpts) *Cloner {
 
-	cloneRef := plumbing.HEAD
+	cloneRef := plumbing.NewBranchReferenceName("loki-helm-chart")
 	if len(mod.Version()) > 0 {
 		cloneRef = plumbing.NewTagReferenceName(mod.Version())
 	}
