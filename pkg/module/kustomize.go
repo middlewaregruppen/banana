@@ -292,7 +292,17 @@ func (m *KustomizeModule) Bundle(opts ...BundleOpts) (*Bundle, error) {
 	// 	return err
 	// }
 
-	return &Bundle{mod: m, ResMap: rm, opts: opts}, nil
+	bopts := make([]BundleOpts, len(opts)+1)
+	bopts[0] = WithResMap(rm)
+	for i, o := range opts {
+		fmt.Println(i + 1)
+		bopts[i+1] = o
+	}
+	fmt.Println(bopts)
+	return NewBundle(m,
+		bopts...,
+	)
+	//return &Bundle{mod: m, ResMap: rm, opts: opts}, nil
 }
 
 func (m *KustomizeModule) BuildEncrypted(data []byte, recipients []string) ([]byte, error) {

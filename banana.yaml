@@ -14,3 +14,6 @@ modules:
   secrets:
   - INFOBLOX_USERNAME=admin
   - INFOBLOX_PASSWORD=password
+- name: logging/loki
+  component:
+  - minio
