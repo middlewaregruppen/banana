@@ -3,7 +3,6 @@ package build
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/middlewaregruppen/banana/pkg/bananafile"
 	"github.com/middlewaregruppen/banana/pkg/git"
@@ -39,6 +38,9 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 				return err
 			}
 
+			// Setup filesystem for exported bundles
+			outfs := filesys.MakeFsOnDisk()
+
 			// Init loader for loading modules
 			tmpfs := filesys.MakeFsInMemory()
 			l := module.NewLoader(tmpfs)
@@ -56,27 +58,41 @@ func NewCmdBuild(fs filesys.FileSystem, w io.Writer, prefix string) *cobra.Comma
 					return err
 				}
 
-				// Bundle the module
-				bun, err := mod.Bundle(
+				// Init opts
+				opts := []module.BundleOpts{
 					module.WithSecrets(mod.Secrets()),
 					module.WithURLs(mod.Host()),
-				)
+				}
+
+				// Use sops encryption if age recipients is provided
+				if km.Age != nil && len(km.Age.Recipients) > 0 {
+					opts = append(opts, module.WithAgeRecipients(km.Age.Recipients))
+				}
+
+				// Bundle the module
+				bun, err := mod.Bundle(opts...)
+				if err != nil {
+					return err
+				}
+
+				// Write to disk
+				err = bun.Export(outfs, module.WithExportRootDir("src/"))
 				if err != nil {
 					return err
 				}
 
 				// Build encrypted & flattened module to stdout
-				if km.Age != nil && len(km.Age.Recipients) > 0 {
-					if err = bun.FlattenSecure(km.Age.Recipients, os.Stdout); err != nil {
-						return err
-					}
-					return nil
-				}
+				// if km.Age != nil && len(km.Age.Recipients) > 0 {
+				// 	if err = bun.FlattenSecure(km.Age.Recipients, os.Stdout); err != nil {
+				// 		return err
+				// 	}
+				// 	return nil
+				// }
 
-				// Build flattened module to stdout
-				if err = bun.Flatten(os.Stdout); err != nil {
-					return err
-				}
+				// // Build flattened module to stdout
+				// if err = bun.Flatten(os.Stdout); err != nil {
+				// 	return err
+				// }
 			}
 			return err
 		},

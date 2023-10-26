@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path"
 	"strings"
 	"time"
 
@@ -15,34 +16,29 @@ import (
 	syaml "github.com/getsops/sops/v3/stores/yaml"
 	"sigs.k8s.io/kustomize/api/resmap"
 	"sigs.k8s.io/kustomize/api/resource"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 	"sigs.k8s.io/kustomize/kyaml/resid"
 	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
-func FromResMap(rm resmap.ResMap) *Bundle {
-	return &Bundle{
-		ResMap: rm,
-	}
-}
-
 type Bundle struct {
-	ResMap resmap.ResMap
-	mod    Module
-	opts   []BundleOpts
-
-	// SOPS
-	//sopsOutputStore, sopsInputStore *syaml.Store
-	//sopsCipher aes.Cipher
+	resources     []Resource
+	resmap        resmap.ResMap
+	mod           Module
+	opts          []BundleOpts
+	exportRootDir string
+	recipients    []string
 }
 
-type BundleOpts func(*Bundle) *Bundle
+type BundleOpts func(*Bundle) error
+type ExportOpts func(*Bundle) error
 
-type BuildOpts struct {
-	AgeRecipients []string
+func (b *Bundle) Resources() []Resource {
+	return b.resources
 }
 
 func (b *Bundle) FindByGVK(gvk GroupVersionKind) []*resource.Resource {
-	res := b.ResMap.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
+	res := b.resmap.GetMatchingResourcesByAnyId(func(id resid.ResId) bool {
 		if id.Group == gvk.Group && id.Kind == gvk.Kind && id.Version == gvk.Version {
 			return true
 		}
@@ -51,17 +47,70 @@ func (b *Bundle) FindByGVK(gvk GroupVersionKind) []*resource.Resource {
 	return res
 }
 
-func (b *Bundle) Flatten(w io.Writer) error {
-	// Apply middleware
-	for _, opt := range b.opts {
+func (b *Bundle) Export(fs filesys.FileSystem, opts ...ExportOpts) error {
+
+	// Apply opts
+	for _, opt := range opts {
 		opt(b)
 	}
-	d, err := b.ResMap.AsYaml()
+
+	root := b.mod.Name()
+	if len(b.exportRootDir) > 0 {
+		root = path.Join(b.exportRootDir, root)
+	}
+
+	err := fs.MkdirAll(root)
 	if err != nil {
 		return err
 	}
-	_, err = w.Write(d)
-	return err
+
+	// Write each resource to file on fs
+	for _, res := range b.Resources() {
+		fname := strings.ToLower(path.Join(root, fmt.Sprintf("%s_%s.yaml", res.GetKind(), res.GetName())))
+		dfile, err := fs.Create(fname)
+		if err != nil {
+			return err
+		}
+		defer dfile.Close()
+
+		var out []byte
+
+		out, err = res.Flatten()
+		if err != nil {
+			return err
+		}
+
+		if len(b.recipients) > 0 && res.GetKind() == "Secret" && res.GetApiVersion() == "v1" {
+			out, err = res.FlattenSecure(
+				b.recipients,
+				b.mod.Secrets(),
+			)
+			if err != nil {
+				return err
+			}
+		}
+
+		_, err = dfile.Write(out)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (b *Bundle) Flatten(w io.Writer) error {
+	for _, res := range b.resmap.Resources() {
+		d, err := res.AsYAML()
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(d)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *Bundle) FlattenSecure(recipients []string, w io.Writer) error {
@@ -143,32 +192,34 @@ func encrypt(data []byte, recipients, keysToEncrypt []string) ([]byte, error) {
 	return outputStore.EmitEncryptedFile(tree)
 }
 
-func WithSOPS(recipients []string) BundleOpts {
-	return func(b *Bundle) *Bundle {
-		secretResources := b.FindByGVK(GroupVersionKind{"", "v1", "Secret"})
-		for _, k := range b.mod.Secrets() {
-			for _, secRes := range secretResources {
-				_, err := secRes.Pipe(
-					kyaml.Lookup("data", k.Key),
-					kyaml.Set(kyaml.NewScalarRNode(k.Value)),
-				)
-				if err != nil {
-					return nil
-				}
-				idSet := resource.MakeIdSet([]*resource.Resource{secRes})
-				err = b.ResMap.ApplySmPatch(idSet, secRes)
-				if err != nil {
-					return nil
-				}
-			}
+func WithExportRootDir(root string) ExportOpts {
+	return func(b *Bundle) error {
+		b.exportRootDir = root
+		return nil
+	}
+}
+
+func WithResMap(rm resmap.ResMap) BundleOpts {
+	return func(b *Bundle) error {
+		b.resmap = rm
+		b.resources = make([]Resource, len(b.resmap.Resources()))
+		for i, res := range b.resmap.Resources() {
+			b.resources[i].Resource = res
 		}
-		return b
+		return nil
+	}
+}
+
+func WithAgeRecipients(recipients []string) BundleOpts {
+	return func(b *Bundle) error {
+		b.recipients = recipients
+		return nil
 	}
 }
 
 // ApplyURLs applies all the URLs defined in this module to the provided ResMap.
 func WithURLs(s string) BundleOpts {
-	return func(b *Bundle) *Bundle {
+	return func(b *Bundle) error {
 		// Create a list of ingress resources to transform
 		ingressResources := b.FindByGVK(GroupVersionKind{"networking.k8s.io", "v1", "Ingress"})
 
@@ -179,15 +230,15 @@ func WithURLs(s string) BundleOpts {
 				kyaml.SetField("host", kyaml.NewScalarRNode(s)),
 			)
 			if err != nil {
-				return nil
+				return err
 			}
 			idSet := resource.MakeIdSet(ingressResources)
-			err = b.ResMap.ApplySmPatch(idSet, ing)
+			err = b.resmap.ApplySmPatch(idSet, ing)
 			if err != nil {
-				return nil
+				return err
 			}
 		}
-		return b
+		return nil
 	}
 }
 
@@ -196,8 +247,7 @@ func WithURLs(s string) BundleOpts {
 // The Secret resource to update is determined by the secret key name itself.
 // This function only adds or updates values in the Secret resource if the key matches that of the module.
 func WithSecrets(secrets []Secret) BundleOpts {
-
-	return func(b *Bundle) *Bundle {
+	return func(b *Bundle) error {
 		// Create a list of Secret resources to transform
 		secretResources := b.FindByGVK(GroupVersionKind{"", "v1", "Secret"})
 
@@ -209,15 +259,32 @@ func WithSecrets(secrets []Secret) BundleOpts {
 					kyaml.Set(kyaml.NewScalarRNode(k.Value)),
 				)
 				if err != nil {
-					return nil
+					return err
 				}
 				idSet := resource.MakeIdSet([]*resource.Resource{secRes})
-				err = b.ResMap.ApplySmPatch(idSet, secRes)
+				err = b.resmap.ApplySmPatch(idSet, secRes)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 		}
-		return b
+		return nil
 	}
+}
+
+// NewBundle returns a new Bundle for the given module and options provided
+func NewBundle(m Module, opts ...BundleOpts) (*Bundle, error) {
+	b := &Bundle{
+		mod:  m,
+		opts: opts,
+	}
+	// Apply opts
+	for _, opt := range opts {
+		err := opt(b)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return b, nil
 }
