@@ -33,6 +33,7 @@ type Cloner struct {
 	cloneSubdir string
 }
 
+// CloonerOpts is options for the cloner
 type ClonerOpts func(c *Cloner)
 
 // WithStorer returns a ClonerOpts with the provided storer
@@ -49,20 +50,7 @@ func WithTargetPath(s string) ClonerOpts {
 	}
 }
 
-// // WithCloneURL returns a ClonerOpts with the provided clone url
-// func WithCloneURL(s string) ClonerOpts {
-// 	return func(c *Cloner) {
-// 		c.cloneURL = s
-// 	}
-// }
-
-// // WithCloneRef returns a ClonerOpts with the provided clone ref
-// func WithCloneRef(s string) ClonerOpts {
-// 	return func(c *Cloner) {
-// 		c.cloneRef = s
-// 	}
-// }
-
+// WithCloneSubDir configures a cloner to clone into desired sub directory
 func WithCloneSubDir(s string) ClonerOpts {
 	return func(c *Cloner) {
 		c.cloneSubdir = s

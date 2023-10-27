@@ -263,46 +263,14 @@ func (m *KustomizeModule) Bundle(opts ...BundleOpts) (*Bundle, error) {
 		return nil, err
 	}
 
-	// err = m.ApplyURLs(m.resmap)
-	// if err != nil {
-	// 	return err
-	// }
-	// err = m.ApplySecrets(m.resmap)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // As Yaml output
-	// m.resmap, err = res.AsYaml()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // Encrypt secrets
-	// if len(opts.AgeRecipients) > 0 {
-	// 	yml, err = m.BuildEncrypted(yml, opts.AgeRecipients)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// Write to writer
-	// _, err = w.Write(yml)
-	// if err != nil {
-	// 	return err
-	// }
-
 	bopts := make([]BundleOpts, len(opts)+1)
 	bopts[0] = WithResMap(rm)
 	for i, o := range opts {
-		fmt.Println(i + 1)
 		bopts[i+1] = o
 	}
-	fmt.Println(bopts)
 	return NewBundle(m,
 		bopts...,
 	)
-	//return &Bundle{mod: m, ResMap: rm, opts: opts}, nil
 }
 
 func (m *KustomizeModule) BuildEncrypted(data []byte, recipients []string) ([]byte, error) {
