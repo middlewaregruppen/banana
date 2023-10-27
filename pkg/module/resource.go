@@ -2,12 +2,18 @@ package module
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 
 	"sigs.k8s.io/kustomize/api/resource"
 )
 
 type Resource struct {
 	*resource.Resource
+}
+
+func (r *Resource) FileName() string {
+	return strings.ToLower(fmt.Sprintf("%s_%s.yaml", r.GetKind(), r.GetName()))
 }
 
 // FlattenSecure flattenes the resource returning a byte array containing a YAML representation of the resource.

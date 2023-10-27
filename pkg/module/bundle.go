@@ -44,7 +44,7 @@ func (b *Bundle) Resources() []Resource {
 // AddResource adds a resource to this bundle
 func (b *Bundle) AddResource(res Resource) {
 	b.resources = append(b.resources, res)
-	b.kustomization.Resources = append(b.kustomization.Resources, strings.ToLower(fmt.Sprintf("%s_%s.yaml", res.GetKind(), res.GetName())))
+	b.kustomization.Resources = append(b.kustomization.Resources, res.FileName())
 }
 
 // FindByGVK attempts to find a resource with the specific kind group, version and kind
@@ -102,7 +102,7 @@ func (b *Bundle) Export(fs filesys.FileSystem, opts ...ExportOpts) error {
 
 	// Write each resource to file on fs
 	for _, res := range b.Resources() {
-		fname := strings.ToLower(path.Join(root, fmt.Sprintf("%s_%s.yaml", res.GetKind(), res.GetName())))
+		fname := strings.ToLower(path.Join(root, res.FileName()))
 		dfile, err := fs.Create(fname)
 		if err != nil {
 			return err
