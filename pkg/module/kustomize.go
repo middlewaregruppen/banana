@@ -22,13 +22,22 @@ var DefaultKustomizerOptions = &krusty.Options{
 	Reorder:           krusty.ReorderOptionNone,
 	AddManagedbyLabel: false,
 	LoadRestrictions:  ktypes.LoadRestrictionsNone,
-	PluginConfig:      ktypes.DisabledPluginConfig(),
+	PluginConfig: &ktypes.PluginConfig{
+		BpLoadingOptions: ktypes.BploUseStaticallyLinked,
+		HelmConfig: ktypes.HelmConfig{
+			Enabled: true,
+			Command: "helm",
+		},
+		PluginRestrictions: ktypes.PluginRestrictionsBuiltinsOnly,
+		FnpLoadingOptions:  ktypes.DisabledPluginConfig().FnpLoadingOptions,
+	},
 }
 
 type KustomizeModule struct {
-	mod    types.Module
-	fs     filesys.FileSystem
-	prefix string
+	mod       types.Module
+	fs        filesys.FileSystem
+	prefix    string
+	tmpFolder filesys.ConfirmedDir
 	//resmap resmap.ResMap
 }
 
@@ -224,7 +233,8 @@ func (m *KustomizeModule) Build(w io.Writer) error {
 func (m *KustomizeModule) Bundle(opts ...BundleOpts) (*Bundle, error) {
 
 	// Create kustomization file in tmp fs
-	kf, err := m.fs.Create("kustomization.yaml")
+	kustFile := fmt.Sprintf("/%s/kustomization.yaml", m.tmpFolder.String())
+	kf, err := m.fs.Create(kustFile)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +268,7 @@ func (m *KustomizeModule) Bundle(opts ...BundleOpts) (*Bundle, error) {
 	}
 
 	k := krusty.MakeKustomizer(DefaultKustomizerOptions)
-	rm, err := k.Run(m.fs, ".")
+	rm, err := k.Run(m.fs, m.tmpFolder.String())
 	if err != nil {
 		return nil, err
 	}
@@ -325,10 +335,11 @@ func (m *KustomizeModule) BuildEncrypted(data []byte, recipients []string) ([]by
 // NewKustomizeModule creates a new Kustomize implemented Module. It expects a filesystem, module type and a prefix.
 // The prefix argument is a string that will prefix this module's name. This is so that the name module can be mapped to a Git repository,
 // without having to reference the module by it's entire URL.
-func NewKustomizeModule(fs filesys.FileSystem, mod types.Module, prefix string) *KustomizeModule {
+func NewKustomizeModule(fs filesys.FileSystem, mod types.Module, prefix string, tmpFolder filesys.ConfirmedDir) *KustomizeModule {
 	return &KustomizeModule{
-		fs:     fs,
-		mod:    mod,
-		prefix: prefix,
+		fs:        fs,
+		mod:       mod,
+		prefix:    prefix,
+		tmpFolder: tmpFolder,
 	}
 }
